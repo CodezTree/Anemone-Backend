@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Animal Zoom</title>
+    </head>
+    <body>
+        <h1>Animal Zoom</h1>
+        <form id="roomForm">
+            <input
+                type="text"
+                id="roomCode"
+                placeholder="Enter Room Code"
+                required />
+            <button type="submit">Join Room</button>
+        </form>
+        <div id="animalContainer" style="display: none">
+            <img
+                id="animalImage"
+                src="happy_animal.png"
+                alt="Animal Character" />
+            <div>
+                <button onclick="changeExpression('happy')">Happy</button>
+                <button onclick="changeExpression('sad')">Sad</button>
+                <button onclick="changeExpression('surprised')">
+                    Surprised
+                </button>
+            </div>
+            <div>
+                <button onclick="toggleMic()">Toggle Mic</button>
+            </div>
+        </div>
+
+        <script>
+            const roomForm = document.getElementById("roomForm");
+            const animalContainer = document.getElementById("animalContainer");
+            const animalImage = document.getElementById("animalImage");
+            let isMicOn = false;
+
+            roomForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const roomCode = document.getElementById("roomCode").value;
+                joinRoom(roomCode);
+            });
+
+            function joinRoom(roomCode) {
+                // 여기서 서버로 방 코드 전송 및 유효성 검사
+                // 유효한 경우
+                roomForm.style.display = "none";
+                animalContainer.style.display = "block";
+                // 유효하지 않은 경우 적절한 메시지 표시
+            }
+
+            function changeExpression(expression) {
+                switch (expression) {
+                    case "happy":
+                        animalImage.src = "happy_animal.png";
+                        break;
+                    case "sad":
+                        animalImage.src = "sad_animal.png";
+                        break;
+                    case "surprised":
+                        animalImage.src = "surprised_animal.png";
+                        break;
+                }
+            }
+
+            function toggleMic() {
+                isMicOn = !isMicOn;
+                if (isMicOn) {
+                    // 마이크 켜기
+                    console.log("Mic is on");
+                } else {
+                    // 마이크 끄기
+                    console.log("Mic is off");
+                }
+            }
+        </script>
+    </body>
+</html>
