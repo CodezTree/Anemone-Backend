@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Animal Zoom</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f8ff;
+                color: #333;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin: 0;
+                padding: 0;
+                height: 100vh;
+                justify-content: center;
+            }
+
+            h1 {
+                margin-bottom: 20px;
+                color: #2c3e50;
+            }
+
+            form {
+                margin-bottom: 20px;
+            }
+
+            input[type="text"] {
+                padding: 10px;
+                border: 1px solid #bdc3c7;
+                border-radius: 5px;
+                margin-right: 10px;
+                width: 200px;
+            }
+
+            button {
+                padding: 10px 20px;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            button:hover {
+                background-color: #2980b9;
+            }
+
+            #animalContainer {
+                display: none;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .user-container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .user-box {
+                border: 1px solid #bdc3c7;
+                border-radius: 10px;
+                margin: 10px;
+                padding: 20px;
+                width: 150px;
+                text-align: center;
+                background-color: white;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            .animal-image {
+                width: 80px;
+                height: 80px;
+            }
+
+            .expression-buttons,
+            .mic-button {
+                margin-top: 20px;
+            }
+
+            .expression-buttons button,
+            .mic-button button {
+                margin: 5px;
+            }
+
+            .mic-button {
+                display: flex;
+                justify-content: center;
+            }
+
+            .mic-status img {
+                width: 24px;
+                height: 24px;
+                vertical-align: middle;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Animal Zoom</h1>
+        <form id="nameForm">
+            <input
+                type="text"
+                id="userName"
+                placeholder="Enter Your Name"
+                required />
+            <button type="submit">Join</button>
+        </form>
+        <form id="roomForm" style="display: none">
+            <input
+                type="text"
+                id="roomCode"
+                placeholder="Enter Room Code"
+                required />
+            <button type="submit">Join Room</button>
+        </form>
+        <div id="animalContainer">
+            <div id="userContainer" class="user-container"></div>
+            <div class="expression-buttons">
+                <button onclick="changeExpression('happy')">😊 Happy</button>
+                <button onclick="changeExpression('sad')">😢 Sad</button>
+                <button onclick="changeExpression('surprised')">
+                    😲 Surprised
+                </button>
+            </div>
+            <div class="mic-button">
+                <button onclick="toggleMic()">🎤 Toggle Mic</button>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
+
+            const nameForm = document.getElementById("nameForm");
+            const roomForm = document.getElementById("roomForm");
+            const animalContainer = document.getElementById("animalContainer");
+            const userContainer = document.getElementById("userContainer");
+            let isMicOn = false;
+            let roomCode = null;
+            let userName = "";
+            let timeoutId = null;
+            const peerConnections = {};
+            const config = {
+                iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+            };
+
+            nameForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                userName = document.getElementById("userName").value;
+                nameForm.style.display = "none";
+                roomForm.style.display = "block";
+            });
+
+            roomForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                roomCode = document.getElementById("roomCode").value;
+                joinRoom(roomCode);
+            });
+
+            function joinRoom(roomCode) {
+                socket.emit("joinRoom", { roomCode, userName });
+                roomForm.style.display = "none";
+                animalContainer.style.display = "flex";
+
+                // 기존 이벤트 핸들러 제거
+                socket.off("existingUsers");
+                socket.off("userJoined");
+                socket.off("userLeft");
+                socket.off("changeExpression");
+                socket.off("toggleMic");
+                socket.off("offer");
+                socket.off("answer");
+                socket.off("candidate");
+
+                // 새로운 이벤트 핸들러 등록
+                socket.on("existingUsers", (users) => {
+                    users.forEach((user) =>
+                        addUser(user.userId, user.userName, user.isMicOn)
+                    );
+                });
+
+                socket.on("userJoined", (data) => {
+                    addUser(data.userId, data.userName, data.isMicOn);
+                    createOffer(data.userId);
+                });
+
+                socket.on("userLeft", (data) => {
+                    removeUser(data.userId);
+                    closePeerConnection(data.userId);
+                });
+
+                socket.on("changeExpression", (data) => {
+                    updateExpression(data);
+                });
+
+                socket.on("toggleMic", (data) => {
+                    const userBox = document.getElementById(data.userId);
+                    if (userBox) {
+                        const micStatus = userBox.querySelector(".mic-status");
+                        micStatus.innerHTML = `Mic: <img src="${
+                            data.isMicOn ? "mic_on.png" : "mic_off.png"
+                        }" alt="Mic Status">`;
+                    }
+                    console.log(
+                        `Mic for user ${data.userId} is ${
+                            data.isMicOn ? "on" : "off"
+                        }`
+                    );
+                });
+
+                socket.on("offer", (data) => {
+                    createAnswer(data);
+                });
+
+                socket.on("answer", (data) => {
+                    peerConnections[data.from].setRemoteDescription(
+                        new RTCSessionDescription(data.answer)
+                    );
+                });
+
+                socket.on("candidate", (data) => {
+                    const candidate = new RTCIceCandidate(data.candidate);
+                    peerConnections[data.from].addIceCandidate(candidate);
+                });
+            }
+
+            function addUser(userId, name, micStatus) {
+                if (document.getElementById(userId)) return;
+
+                const userBox = document.createElement("div");
+                userBox.id = userId;
+                userBox.className = "user-box";
+                userBox.innerHTML = `
+                <img src="neutral_animal.png" alt="Animal Character" class="animal-image">
+                <p>User: ${name}</p>
+                <p class="mic-status">Mic: <img src="${
+                    micStatus ? "mic_on.png" : "mic_off.png"
+                }" alt="Mic Status"></p>
+                <audio id="audio-${userId}" autoplay></audio>
+            `;
+                userContainer.appendChild(userBox);
+            }
+
+            function removeUser(userId) {
+                const userBox = document.getElementById(userId);
+                if (userBox) {
+                    userContainer.removeChild(userBox);
+                }
+                closePeerConnection(userId);
+            }
+
+            function changeExpression(expression) {
+                socket.emit("changeExpression", {
+                    roomCode,
+                    expression,
+                    userId: socket.id,
+                });
+
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                timeoutId = setTimeout(() => {
+                    socket.emit("changeExpression", {
+                        roomCode,
+                        expression: "neutral",
+                        userId: socket.id,
+                    });
+                }, 2000);
+            }
+
+            function updateExpression(data) {
+                const userBox = document.getElementById(data.userId);
+                if (userBox) {
+                    const animalImage = userBox.querySelector(".animal-image");
+                    switch (data.expression) {
+                        case "happy":
+                            animalImage.src = "happy_animal.png";
+                            break;
+                        case "sad":
+                            animalImage.src = "sad_animal.png";
+                            break;
+                        case "surprised":
+                            animalImage.src = "surprised_animal.png";
+                            break;
+                        case "neutral":
+                            animalImage.src = "neutral_animal.png";
+                            break;
+                    }
+                }
+            }
+
+            function toggleMic() {
+                isMicOn = !isMicOn;
+                socket.emit("toggleMic", {
+                    roomCode,
+                    isMicOn,
+                    userId: socket.id,
+                });
+                const userBox = document.getElementById(socket.id);
+                if (userBox) {
+                    const micStatus = userBox.querySelector(".mic-status");
+                    micStatus.innerHTML = `Mic: <img src="${
+                        isMicOn ? "mic_on.png" : "mic_off.png"
+                    }" alt="Mic Status">`;
+                }
+                console.log("Mic is " + (isMicOn ? "on" : "off"));
+
+                if (isMicOn) {
+                    startAudioStream();
+                } else {
+                    stopAudioStream();
+                }
+            }
+
+            function startAudioStream() {
+                navigator.mediaDevices
+                    .getUserMedia({ audio: true })
+                    .then((stream) => {
+                        stream.getTracks().forEach((track) => {
+                            for (let userId in peerConnections) {
+                                peerConnections[userId].addTrack(track, stream);
+                            }
+                        });
+                    })
+                    .catch((error) => {
+                        console.error("Error accessing media devices.", error);
+                    });
+            }
+            function stopAudioStream() {
+                const stream = localStream();
+                if (stream) {
+                    stream.getTracks().forEach((track) => track.stop());
+                }
+            }
+
+            function localStream() {
+                return document.querySelector(`#audio-${socket.id}`).srcObject;
+            }
+
+            function createOffer(userId) {
+                const peerConnection = new RTCPeerConnection(config);
+                peerConnections[userId] = peerConnection;
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit("candidate", {
+                            to: userId,
+                            from: socket.id,
+                            candidate: event.candidate,
+                        });
+                    }
+                };
+
+                peerConnection.ontrack = (event) => {
+                    const audio = document.querySelector(`#audio-${userId}`);
+                    audio.srcObject = event.streams[0];
+                };
+
+                peerConnection
+                    .createOffer()
+                    .then((offer) => {
+                        return peerConnection.setLocalDescription(offer);
+                    })
+                    .then(() => {
+                        socket.emit("offer", {
+                            to: userId,
+                            from: socket.id,
+                            offer: peerConnection.localDescription,
+                        });
+                    });
+            }
+
+            function createAnswer(data) {
+                const peerConnection = new RTCPeerConnection(config);
+                peerConnections[data.from] = peerConnection;
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit("candidate", {
+                            to: data.from,
+                            from: socket.id,
+                            candidate: event.candidate,
+                        });
+                    }
+                };
+
+                peerConnection.ontrack = (event) => {
+                    const audio = document.querySelector(`#audio-${data.from}`);
+                    audio.srcObject = event.streams[0];
+                };
+
+                peerConnection
+                    .setRemoteDescription(new RTCSessionDescription(data.offer))
+                    .then(() => {
+                        return navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                        });
+                    })
+                    .then((stream) => {
+                        stream.getTracks().forEach((track) => {
+                            peerConnection.addTrack(track, stream);
+                        });
+                        return peerConnection.createAnswer();
+                    })
+                    .then((answer) => {
+                        return peerConnection.setLocalDescription(answer);
+                    })
+                    .then(() => {
+                        socket.emit("answer", {
+                            to: data.from,
+                            from: socket.id,
+                            answer: peerConnection.localDescription,
+                        });
+                    });
+            }
+
+            function closePeerConnection(userId) {
+                if (peerConnections[userId]) {
+                    peerConnections[userId].close();
+                    delete peerConnections[userId];
+                }
+            }
+        </script>
+    </body>
+</html>
