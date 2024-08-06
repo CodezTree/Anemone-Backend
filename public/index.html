@@ -217,14 +217,25 @@
                 });
 
                 socket.on("answer", (data) => {
-                    peerConnections[data.from].setRemoteDescription(
-                        new RTCSessionDescription(data.answer)
-                    );
+                    if (peerConnections[data.from]) {
+                        peerConnections[data.from]
+                            .setRemoteDescription(
+                                new RTCSessionDescription(data.answer)
+                            )
+                            .catch((error) => {
+                                console.error(
+                                    "Error setting remote description for answer: ",
+                                    error
+                                );
+                            });
+                    }
                 });
 
                 socket.on("candidate", (data) => {
                     const candidate = new RTCIceCandidate(data.candidate);
-                    peerConnections[data.from].addIceCandidate(candidate);
+                    if (peerConnections[data.from]) {
+                        peerConnections[data.from].addIceCandidate(candidate);
+                    }
                 });
             }
 
@@ -321,6 +332,11 @@
                 navigator.mediaDevices
                     .getUserMedia({ audio: true })
                     .then((stream) => {
+                        const localAudio = document.querySelector(
+                            `#audio-${socket.id}`
+                        );
+                        localAudio.srcObject = stream;
+
                         stream.getTracks().forEach((track) => {
                             for (let userId in peerConnections) {
                                 peerConnections[userId].addTrack(track, stream);
@@ -331,10 +347,15 @@
                         console.error("Error accessing media devices.", error);
                     });
             }
+
             function stopAudioStream() {
-                const stream = localStream();
+                const localAudio = document.querySelector(
+                    `#audio-${socket.id}`
+                );
+                const stream = localAudio ? localAudio.srcObject : null;
                 if (stream) {
                     stream.getTracks().forEach((track) => track.stop());
+                    localAudio.srcObject = null;
                 }
             }
 
@@ -361,18 +382,46 @@
                     audio.srcObject = event.streams[0];
                 };
 
-                peerConnection
-                    .createOffer()
-                    .then((offer) => {
-                        return peerConnection.setLocalDescription(offer);
-                    })
-                    .then(() => {
-                        socket.emit("offer", {
-                            to: userId,
-                            from: socket.id,
-                            offer: peerConnection.localDescription,
+                if (isMicOn) {
+                    navigator.mediaDevices
+                        .getUserMedia({ audio: true })
+                        .then((stream) => {
+                            stream.getTracks().forEach((track) => {
+                                peerConnection.addTrack(track, stream);
+                            });
+
+                            return peerConnection.createOffer();
+                        })
+                        .then((offer) => {
+                            return peerConnection.setLocalDescription(offer);
+                        })
+                        .then(() => {
+                            socket.emit("offer", {
+                                to: userId,
+                                from: socket.id,
+                                offer: peerConnection.localDescription,
+                            });
+                        })
+                        .catch((error) => {
+                            console.error("Error creating offer: ", error);
                         });
-                    });
+                } else {
+                    peerConnection
+                        .createOffer()
+                        .then((offer) => {
+                            return peerConnection.setLocalDescription(offer);
+                        })
+                        .then(() => {
+                            socket.emit("offer", {
+                                to: userId,
+                                from: socket.id,
+                                offer: peerConnection.localDescription,
+                            });
+                        })
+                        .catch((error) => {
+                            console.error("Error creating offer: ", error);
+                        });
+                }
             }
 
             function createAnswer(data) {
@@ -397,14 +446,20 @@
                 peerConnection
                     .setRemoteDescription(new RTCSessionDescription(data.offer))
                     .then(() => {
-                        return navigator.mediaDevices.getUserMedia({
-                            audio: true,
-                        });
+                        if (isMicOn) {
+                            return navigator.mediaDevices.getUserMedia({
+                                audio: true,
+                            });
+                        } else {
+                            return Promise.resolve(null);
+                        }
                     })
                     .then((stream) => {
-                        stream.getTracks().forEach((track) => {
-                            peerConnection.addTrack(track, stream);
-                        });
+                        if (stream) {
+                            stream.getTracks().forEach((track) => {
+                                peerConnection.addTrack(track, stream);
+                            });
+                        }
                         return peerConnection.createAnswer();
                     })
                     .then((answer) => {
@@ -416,6 +471,9 @@
                             from: socket.id,
                             answer: peerConnection.localDescription,
                         });
+                    })
+                    .catch((error) => {
+                        console.error("Error creating answer: ", error);
                     });
             }
 
