@@ -346,40 +346,48 @@
                 }
                 console.log("Mic is " + (isMicOn ? "on" : "off"));
 
-                if (isMicOn) {
-                    startAudioStream();
-                } else {
-                    stopAudioStream();
-                }
-            }
-
-            function startAudioStream() {
-                console.log("Starting audio stream");
-                navigator.mediaDevices
-                    .getUserMedia({ audio: true })
-                    .then((stream) => {
-                        stream.getTracks().forEach((track) => {
-                            for (let userId in peerConnections) {
-                                peerConnections[userId].addTrack(track, stream);
-                            }
-                        });
-                    })
-                    .catch((error) => {
-                        console.error("Error accessing media devices.", error);
-                    });
-            }
-
-            function stopAudioStream() {
-                console.log("Stopping audio stream");
+                // Enable or disable the audio tracks
                 const localAudio = document.querySelector(
                     `#audio-${socket.id}`
                 );
+                console.log("audio ? -> : ");
+                console.log(localAudio);
                 const stream = localAudio ? localAudio.srcObject : null;
                 if (stream) {
-                    stream.getTracks().forEach((track) => track.stop());
-                    localAudio.srcObject = null;
+                    stream.getAudioTracks().forEach((track) => {
+                        console.log("Track on/off : " + track.enabled);
+                        track.enabled = isMicOn;
+                    });
                 }
             }
+
+            // function startAudioStream() {
+            //     console.log("Starting audio stream");
+            //     navigator.mediaDevices
+            //         .getUserMedia({ audio: true })
+            //         .then((stream) => {
+            //             stream.getTracks().forEach((track) => {
+            //                 for (let userId in peerConnections) {
+            //                     peerConnections[userId].addTrack(track, stream);
+            //                 }
+            //             });
+            //         })
+            //         .catch((error) => {
+            //             console.error("Error accessing media devices.", error);
+            //         });
+            // }
+
+            // function stopAudioStream() {
+            //     console.log("Stopping audio stream");
+            //     const localAudio = document.querySelector(
+            //         `#audio-${socket.id}`
+            //     );
+            //     const stream = localAudio ? localAudio.srcObject : null;
+            //     if (stream) {
+            //         stream.getTracks().forEach((track) => track.stop());
+            //         localAudio.srcObject = null;
+            //     }
+            // }
 
             function localStream() {
                 return document.querySelector(`#audio-${socket.id}`).srcObject;
@@ -489,20 +497,17 @@
                 peerConnection
                     .setRemoteDescription(new RTCSessionDescription(data.offer))
                     .then(() => {
-                        //if (isMicOn) {
+                        console.log(
+                            "Remote description set, getting user media..."
+                        );
                         return navigator.mediaDevices.getUserMedia({
                             audio: true,
                         });
-                        // } else {
-                        //     return Promise.resolve(null);
-                        // }
                     })
                     .then((stream) => {
-                        if (stream) {
-                            stream.getTracks().forEach((track) => {
-                                peerConnection.addTrack(track, stream);
-                            });
-                        }
+                        stream.getTracks().forEach((track) => {
+                            peerConnection.addTrack(track, stream);
+                        });
                         return peerConnection.createAnswer();
                     })
                     .then((answer) => {
@@ -521,7 +526,6 @@
                         console.error("Error creating answer: ", error);
                     });
             }
-
             function closePeerConnection(userId) {
                 if (peerConnections[userId]) {
                     peerConnections[userId].close();
