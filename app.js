@@ -21,6 +21,10 @@ io.on("connection", (socket) => {
     console.log("a user connected:", socket.id);
 
     socket.on("tryJoin", (roomCode) => {
+        if (!rooms[roomCode]) {
+            rooms[roomCode] = [];
+        }
+
         // room 정원 5명
         if (rooms[roomCode].length == 5) {
             socket.emit("roomFull");
@@ -31,10 +35,6 @@ io.on("connection", (socket) => {
 
     socket.on("joinRoom", ({ roomCode, userName }) => {
         socket.join(roomCode);
-
-        if (!rooms[roomCode]) {
-            rooms[roomCode] = [];
-        }
 
         const newUser = {
             userId: socket.id,
