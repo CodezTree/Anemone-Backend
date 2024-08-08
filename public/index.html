@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Animal Zoom</title>
+        <title>Animon</title>
         <style>
             /* 스타일 부분은 기존과 동일합니다. */
             body {
@@ -20,7 +20,7 @@
             }
 
             h1 {
-                margin-bottom: 20px;
+                margin-bottom: 10px;
                 color: #2c3e50;
             }
 
@@ -44,6 +44,8 @@
                 border-radius: 5px;
                 cursor: pointer;
                 transition: background-color 0.3s ease;
+                width: 150px; /* 버튼 너비를 균일하게 설정 */
+                box-sizing: border-box; /* 패딩과 보더를 너비에 포함 */
             }
 
             button:hover {
@@ -62,20 +64,27 @@
                 justify-content: center;
             }
 
+            .user-counter {
+                margin-bottom: 10px;
+                font-size: x-large;
+                font-weight: bolder;
+                color: #2c3e50;
+            }
+
             .user-box {
                 border: 1px solid #bdc3c7;
-                border-radius: 10px;
-                margin: 10px;
-                padding: 20px;
-                width: 150px;
+                border-radius: 50px;
+                margin: 8px;
+                padding: 8px;
+                width: 220px;
                 text-align: center;
                 background-color: white;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
 
             .animal-image {
-                width: 80px;
-                height: 80px;
+                width: 180px;
+                height: 180px;
             }
 
             .expression-buttons,
@@ -93,15 +102,25 @@
                 justify-content: center;
             }
 
+            .mic-status {
+                margin-top: 8px;
+                margin-bottom: 8px;
+            }
+
             .mic-status img {
                 width: 24px;
                 height: 24px;
                 vertical-align: middle;
             }
+
+            .name-box {
+                margin-top: 8px;
+                margin-bottom: 8px;
+            }
         </style>
     </head>
     <body>
-        <h1>Animal Zoom</h1>
+        <h1>Animon</h1>
         <form id="nameForm">
             <input
                 type="text"
@@ -119,6 +138,7 @@
             <button type="submit">Join Room</button>
         </form>
         <div id="animalContainer">
+            <div id="userCounter" class="user-counter">1 / 5</div>
             <div id="userContainer" class="user-container"></div>
             <div class="expression-buttons">
                 <button onclick="changeExpression('happy')">😊 Happy</button>
@@ -140,11 +160,17 @@
             const roomForm = document.getElementById("roomForm");
             const animalContainer = document.getElementById("animalContainer");
             const userContainer = document.getElementById("userContainer");
+            const userCounter = document.getElementById("userCounter");
+
             let isMicOn = false;
             let roomCode = null;
             let userName = "";
             let timeoutId = null;
             let localStream = null;
+            let onFrameId = null;
+            let onFrame;
+            let userCount = 0;
+
             const peerConnections = {};
             const config = {
                 iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -160,10 +186,63 @@
             roomForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 roomCode = document.getElementById("roomCode").value;
+                tryJoinRoom(roomCode);
+            });
+
+            function tryJoinRoom(roomCode) {
+                socket.emit("tryJoin", roomCode);
+            }
+
+            socket.on("roomFull", () => {
+                alert("Room is full!");
+            });
+
+            socket.on("joinOK", (roomCode) => {
                 joinRoom(roomCode);
             });
 
-            function joinRoom(roomCode) {
+            async function joinRoom(roomCode) {
+                console.log("Accessing media...");
+                // 마이크 스트림 설정
+                await navigator.mediaDevices
+                    .getUserMedia({ audio: true })
+                    .then((stream) => {
+                        localStream = stream; // 로컬 스트림 저장
+                        console.log("Local stream obtained");
+
+                        // 트랙 비활성화
+                        localStream.getAudioTracks().forEach((track) => {
+                            track.enabled = false;
+                        });
+
+                        // 마이크 인풋 측정
+                        const context = new AudioContext();
+                        const analyzer = context.createAnalyser();
+                        const mediaStreamAudioStreamSource =
+                            context.createMediaStreamSource(stream);
+                        mediaStreamAudioStreamSource.connect(analyzer, 0);
+                        const pcmData = new Float32Array(analyzer.fftSize);
+
+                        // register anim
+                        onFrame = () => {
+                            analyzer.getFloatTimeDomainData(pcmData);
+                            let sum = 0.0;
+                            for (const amplitude of pcmData) {
+                                sum += amplitude * amplitude;
+                            }
+                            const rms = Math.sqrt(sum / pcmData.length);
+                            const normalizedVolume = Math.min(1, rms / 0.5);
+                            changeVolumeColor(normalizedVolume * 10);
+                            onFrameId = window.requestAnimationFrame(onFrame);
+                        };
+
+                        onFrameId = window.requestAnimationFrame(onFrame);
+                    })
+                    .catch((error) => {
+                        console.error("Error accessing media devices.", error);
+                    });
+
+                //룸 조인
                 socket.emit("joinRoom", { roomCode, userName });
                 roomForm.style.display = "none";
                 animalContainer.style.display = "flex";
@@ -180,9 +259,11 @@
                 console.log("My socket id : " + socket.id);
 
                 socket.on("existingUsers", (users) => {
-                    users.forEach((user) =>
-                        addUser(user.userId, user.userName, user.isMicOn)
-                    );
+                    users.forEach((user) => {
+                        addUser(user.userId, user.userName, user.isMicOn);
+                        userCount++;
+                    });
+                    userCounter.innerText = userCount + " / 5";
                 });
 
                 socket.on("userJoined", (data) => {
@@ -193,11 +274,17 @@
 
                     addUser(data.userId, data.userName, data.isMicOn);
                     createOffer(data.userId);
+
+                    userCount++;
+                    userCounter.innerText = userCount + " / 5";
                 });
 
                 socket.on("userLeft", (data) => {
                     removeUser(data.userId);
                     closePeerConnection(data.userId);
+
+                    userCount--;
+                    userCounter.innerText = userCount + " / 5";
                 });
 
                 socket.on("changeExpression", (data) => {
@@ -208,7 +295,7 @@
                     const userBox = document.getElementById(data.userId);
                     if (userBox) {
                         const micStatus = userBox.querySelector(".mic-status");
-                        micStatus.innerHTML = `Mic: <img src="${
+                        micStatus.innerHTML = `<img src="${
                             data.isMicOn ? "mic_on.png" : "mic_off.png"
                         }" alt="Mic Status">`;
                     }
@@ -265,6 +352,31 @@
                 });
             }
 
+            function changeVolumeColor(vol) {
+                //console.log("Changing volume color base on => " + vol);
+
+                const VOL_METER_MAX = 10;
+                const user_box = document.getElementById(socket.id);
+                const normal_number = normalizeToInteger(vol, 0, VOL_METER_MAX);
+
+                if (user_box) {
+                    if (normal_number > 1)
+                        user_box.style.boxShadow =
+                            "0 0px 16px rgba(51, 204, 51, 1)";
+                    else
+                        user_box.style.boxShadow =
+                            "0 4px 8px rgba(0, 0, 0, 0.1)";
+                }
+            }
+
+            function normalizeToInteger(volume, min, max) {
+                const scaledValue = Math.min(
+                    max,
+                    Math.max(min, volume * (max - min) + min)
+                );
+                return Math.round(scaledValue);
+            }
+
             function addUser(userId, name, micStatus) {
                 if (document.getElementById(userId)) return;
 
@@ -273,8 +385,8 @@
                 userBox.className = "user-box";
                 userBox.innerHTML = `
                 <img src="neutral_animal.png" alt="Animal Character" class="animal-image">
-                <p>User: ${name}</p>
-                <p class="mic-status">Mic: <img src="${
+                <p class="name-box">${name}</p>
+                <p class="mic-status"><img src="${
                     micStatus ? "mic_on.png" : "mic_off.png"
                 }" alt="Mic Status"></p>
                 <audio id="audio-${userId}" autoplay></audio>
@@ -342,7 +454,7 @@
                 const userBox = document.getElementById(socket.id);
                 if (userBox) {
                     const micStatus = userBox.querySelector(".mic-status");
-                    micStatus.innerHTML = `Mic: <img src="${
+                    micStatus.innerHTML = `<img src="${
                         isMicOn ? "mic_on.png" : "mic_off.png"
                     }" alt="Mic Status">`;
                 }
@@ -354,42 +466,16 @@
                     localStream.getAudioTracks().forEach((track) => {
                         track.enabled = isMicOn;
                     });
+
+                    if (isMicOn) {
+                        onFrameId = window.requestAnimationFrame(onFrame);
+                    } else {
+                        if (onFrameId) window.cancelAnimationFrame(onFrameId);
+                    }
                 } else {
                     console.error("No local stream available to toggle.");
                 }
             }
-
-            // function startAudioStream() {
-            //     console.log("Starting audio stream");
-            //     navigator.mediaDevices
-            //         .getUserMedia({ audio: true })
-            //         .then((stream) => {
-            //             stream.getTracks().forEach((track) => {
-            //                 for (let userId in peerConnections) {
-            //                     peerConnections[userId].addTrack(track, stream);
-            //                 }
-            //             });
-            //         })
-            //         .catch((error) => {
-            //             console.error("Error accessing media devices.", error);
-            //         });
-            // }
-
-            // function stopAudioStream() {
-            //     console.log("Stopping audio stream");
-            //     const localAudio = document.querySelector(
-            //         `#audio-${socket.id}`
-            //     );
-            //     const stream = localAudio ? localAudio.srcObject : null;
-            //     if (stream) {
-            //         stream.getTracks().forEach((track) => track.stop());
-            //         localAudio.srcObject = null;
-            //     }
-            // }
-
-            // function localStream() {
-            //     return document.querySelector(`#audio-${socket.id}`).srcObject;
-            // }
 
             function createOffer(userId) {
                 console.log("Creating... Offer...");
@@ -426,18 +512,15 @@
                     }
                 };
 
-                navigator.mediaDevices
-                    .getUserMedia({ audio: true })
-                    .then((stream) => {
-                        localStream = stream; // Save the local stream for toggling mic
-                        stream.getTracks().forEach((track) => {
-                            peerConnection.addTrack(track, stream);
-                        });
-                        return peerConnection.createOffer();
-                    })
-                    .then((offer) => {
-                        return peerConnection.setLocalDescription(offer);
-                    })
+                if (localStream) {
+                    localStream.getTracks().forEach((track) => {
+                        peerConnection.addTrack(track, localStream);
+                    });
+                }
+
+                peerConnection
+                    .createOffer()
+                    .then((offer) => peerConnection.setLocalDescription(offer))
                     .then(() => {
                         socket.emit("offer", {
                             to: userId,
@@ -478,33 +561,17 @@
                 peerConnection
                     .setRemoteDescription(new RTCSessionDescription(data.offer))
                     .then(() => {
-                        console.log(
-                            "Remote description set, getting user media..."
-                        );
-                        if (
-                            !navigator.mediaDevices ||
-                            !navigator.mediaDevices.getUserMedia
-                        ) {
-                            throw new Error(
-                                "getUserMedia not supported on this browser."
-                            );
+                        console.log("Remote description set.");
+                        if (localStream) {
+                            localStream.getTracks().forEach((track) => {
+                                peerConnection.addTrack(track, localStream);
+                            });
                         }
-                        return navigator.mediaDevices.getUserMedia({
-                            audio: true,
-                        });
-                    })
-                    .then((stream) => {
-                        localStream = stream; // Save the local stream for toggling mic
-                        stream.getTracks().forEach((track) => {
-                            peerConnection.addTrack(track, stream);
-                        });
                         return peerConnection.createAnswer();
                     })
-                    .then((answer) => {
-                        console.log("create Answer () => ");
-                        console.log(answer);
-                        return peerConnection.setLocalDescription(answer);
-                    })
+                    .then((answer) =>
+                        peerConnection.setLocalDescription(answer)
+                    )
                     .then(() => {
                         socket.emit("answer", {
                             to: data.from,
