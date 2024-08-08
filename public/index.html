@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Animal Zoom</title>
         <style>
+            /* 스타일 부분은 기존과 동일합니다. */
             body {
                 font-family: Arial, sans-serif;
                 background-color: #f0f8ff;
@@ -166,7 +167,6 @@
                 roomForm.style.display = "none";
                 animalContainer.style.display = "flex";
 
-                // 기존 이벤트 핸들러 제거
                 socket.off("existingUsers");
                 socket.off("userJoined");
                 socket.off("userLeft");
@@ -176,7 +176,8 @@
                 socket.off("answer");
                 socket.off("candidate");
 
-                // 새로운 이벤트 핸들러 등록
+                console.log("My socket id : " + socket.id);
+
                 socket.on("existingUsers", (users) => {
                     users.forEach((user) =>
                         addUser(user.userId, user.userName, user.isMicOn)
@@ -184,6 +185,11 @@
                 });
 
                 socket.on("userJoined", (data) => {
+                    if (data.userId == socket.id) {
+                        console.log("user join conflict!");
+                        return;
+                    }
+
                     addUser(data.userId, data.userName, data.isMicOn);
                     createOffer(data.userId);
                 });
@@ -213,11 +219,18 @@
                 });
 
                 socket.on("offer", (data) => {
+                    console.log("Recieve offer from.." + data.from);
                     createAnswer(data);
                 });
 
                 socket.on("answer", (data) => {
+                    console.log("Recieve answer from.." + data.from);
                     if (peerConnections[data.from]) {
+                        if (data.from == socket.id) {
+                            console.log("Anwser self conflict!");
+                            return;
+                        }
+
                         peerConnections[data.from]
                             .setRemoteDescription(
                                 new RTCSessionDescription(data.answer)
@@ -228,12 +241,24 @@
                                     error
                                 );
                             });
+
+                        console.log(
+                            "Registering answer => from : " +
+                                data.from +
+                                " to : "
+                        );
+                        console.log(data.answer);
                     }
                 });
 
                 socket.on("candidate", (data) => {
                     const candidate = new RTCIceCandidate(data.candidate);
                     if (peerConnections[data.from]) {
+                        console.log(
+                            "Got candidate from " +
+                                data.from +
+                                " ... Registering."
+                        );
                         peerConnections[data.from].addIceCandidate(candidate);
                     }
                 });
@@ -329,14 +354,10 @@
             }
 
             function startAudioStream() {
+                console.log("Starting audio stream");
                 navigator.mediaDevices
                     .getUserMedia({ audio: true })
                     .then((stream) => {
-                        const localAudio = document.querySelector(
-                            `#audio-${socket.id}`
-                        );
-                        localAudio.srcObject = stream;
-
                         stream.getTracks().forEach((track) => {
                             for (let userId in peerConnections) {
                                 peerConnections[userId].addTrack(track, stream);
@@ -349,6 +370,7 @@
             }
 
             function stopAudioStream() {
+                console.log("Stopping audio stream");
                 const localAudio = document.querySelector(
                     `#audio-${socket.id}`
                 );
@@ -364,11 +386,19 @@
             }
 
             function createOffer(userId) {
+                console.log("Creating... Offer...");
+
                 const peerConnection = new RTCPeerConnection(config);
                 peerConnections[userId] = peerConnection;
 
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate) {
+                        console.log(
+                            "offer emiting candiate to (" +
+                                socket.id +
+                                ") - " +
+                                event.candidate
+                        );
                         socket.emit("candidate", {
                             to: userId,
                             from: socket.id,
@@ -379,57 +409,68 @@
 
                 peerConnection.ontrack = (event) => {
                     const audio = document.querySelector(`#audio-${userId}`);
-                    audio.srcObject = event.streams[0];
+                    if (audio.srcObject !== event.streams[0]) {
+                        audio.srcObject = event.streams[0];
+                        console.log(
+                            "audio player registered : " +
+                                audio +
+                                " / " +
+                                event.streams[0]
+                        );
+                    }
                 };
 
-                if (isMicOn) {
-                    navigator.mediaDevices
-                        .getUserMedia({ audio: true })
-                        .then((stream) => {
-                            stream.getTracks().forEach((track) => {
-                                peerConnection.addTrack(track, stream);
-                            });
-
-                            return peerConnection.createOffer();
-                        })
-                        .then((offer) => {
-                            return peerConnection.setLocalDescription(offer);
-                        })
-                        .then(() => {
-                            socket.emit("offer", {
-                                to: userId,
-                                from: socket.id,
-                                offer: peerConnection.localDescription,
-                            });
-                        })
-                        .catch((error) => {
-                            console.error("Error creating offer: ", error);
+                //if (isMicOn) {
+                navigator.mediaDevices
+                    .getUserMedia({ audio: true })
+                    .then((stream) => {
+                        stream.getTracks().forEach((track) => {
+                            peerConnection.addTrack(track, stream);
                         });
-                } else {
-                    peerConnection
-                        .createOffer()
-                        .then((offer) => {
-                            return peerConnection.setLocalDescription(offer);
-                        })
-                        .then(() => {
-                            socket.emit("offer", {
-                                to: userId,
-                                from: socket.id,
-                                offer: peerConnection.localDescription,
-                            });
-                        })
-                        .catch((error) => {
-                            console.error("Error creating offer: ", error);
+                        return peerConnection.createOffer();
+                    })
+                    .then((offer) => {
+                        return peerConnection.setLocalDescription(offer);
+                    })
+                    .then(() => {
+                        socket.emit("offer", {
+                            to: userId,
+                            from: socket.id,
+                            offer: peerConnection.localDescription,
                         });
-                }
+                    })
+                    .catch((error) => {
+                        console.error("Error creating offer: ", error);
+                    });
+                // } else {
+                //     peerConnection
+                //         .createOffer()
+                //         .then((offer) => {
+                //             return peerConnection.setLocalDescription(offer);
+                //         })
+                //         .then(() => {
+                //             socket.emit("offer", {
+                //                 to: userId,
+                //                 from: socket.id,
+                //                 offer: peerConnection.localDescription,
+                //             });
+                //         })
+                //         .catch((error) => {
+                //             console.error("Error creating offer: ", error);
+                //         });
+                // }
             }
 
             function createAnswer(data) {
+                console.log("Creating... Answer...");
+
                 const peerConnection = new RTCPeerConnection(config);
                 peerConnections[data.from] = peerConnection;
 
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate) {
+                        console.log("Answer ice candidate : ");
+                        console.log(event.candidate);
                         socket.emit("candidate", {
                             to: data.from,
                             from: socket.id,
@@ -440,19 +481,21 @@
 
                 peerConnection.ontrack = (event) => {
                     const audio = document.querySelector(`#audio-${data.from}`);
-                    audio.srcObject = event.streams[0];
+                    if (audio.srcObject !== event.streams[0]) {
+                        audio.srcObject = event.streams[0];
+                    }
                 };
 
                 peerConnection
                     .setRemoteDescription(new RTCSessionDescription(data.offer))
                     .then(() => {
-                        if (isMicOn) {
-                            return navigator.mediaDevices.getUserMedia({
-                                audio: true,
-                            });
-                        } else {
-                            return Promise.resolve(null);
-                        }
+                        //if (isMicOn) {
+                        return navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                        });
+                        // } else {
+                        //     return Promise.resolve(null);
+                        // }
                     })
                     .then((stream) => {
                         if (stream) {
@@ -463,6 +506,8 @@
                         return peerConnection.createAnswer();
                     })
                     .then((answer) => {
+                        console.log("create Answer () => ");
+                        console.log(answer);
                         return peerConnection.setLocalDescription(answer);
                     })
                     .then(() => {
