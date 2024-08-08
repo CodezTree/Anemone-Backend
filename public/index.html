@@ -144,6 +144,7 @@
             let roomCode = null;
             let userName = "";
             let timeoutId = null;
+            let localStream = null;
             const peerConnections = {};
             const config = {
                 iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -337,6 +338,7 @@
                     isMicOn,
                     userId: socket.id,
                 });
+
                 const userBox = document.getElementById(socket.id);
                 if (userBox) {
                     const micStatus = userBox.querySelector(".mic-status");
@@ -344,20 +346,16 @@
                         isMicOn ? "mic_on.png" : "mic_off.png"
                     }" alt="Mic Status">`;
                 }
+
                 console.log("Mic is " + (isMicOn ? "on" : "off"));
 
                 // Enable or disable the audio tracks
-                const localAudio = document.querySelector(
-                    `#audio-${socket.id}`
-                );
-                console.log("audio ? -> : ");
-                console.log(localAudio);
-                const stream = localAudio ? localAudio.srcObject : null;
-                if (stream) {
-                    stream.getAudioTracks().forEach((track) => {
-                        console.log("Track on/off : " + track.enabled);
+                if (localStream) {
+                    localStream.getAudioTracks().forEach((track) => {
                         track.enabled = isMicOn;
                     });
+                } else {
+                    console.error("No local stream available to toggle.");
                 }
             }
 
@@ -389,9 +387,9 @@
             //     }
             // }
 
-            function localStream() {
-                return document.querySelector(`#audio-${socket.id}`).srcObject;
-            }
+            // function localStream() {
+            //     return document.querySelector(`#audio-${socket.id}`).srcObject;
+            // }
 
             function createOffer(userId) {
                 console.log("Creating... Offer...");
@@ -428,10 +426,10 @@
                     }
                 };
 
-                //if (isMicOn) {
                 navigator.mediaDevices
                     .getUserMedia({ audio: true })
                     .then((stream) => {
+                        localStream = stream; // Save the local stream for toggling mic
                         stream.getTracks().forEach((track) => {
                             peerConnection.addTrack(track, stream);
                         });
@@ -450,23 +448,6 @@
                     .catch((error) => {
                         console.error("Error creating offer: ", error);
                     });
-                // } else {
-                //     peerConnection
-                //         .createOffer()
-                //         .then((offer) => {
-                //             return peerConnection.setLocalDescription(offer);
-                //         })
-                //         .then(() => {
-                //             socket.emit("offer", {
-                //                 to: userId,
-                //                 from: socket.id,
-                //                 offer: peerConnection.localDescription,
-                //             });
-                //         })
-                //         .catch((error) => {
-                //             console.error("Error creating offer: ", error);
-                //         });
-                // }
             }
 
             function createAnswer(data) {
@@ -500,11 +481,20 @@
                         console.log(
                             "Remote description set, getting user media..."
                         );
+                        if (
+                            !navigator.mediaDevices ||
+                            !navigator.mediaDevices.getUserMedia
+                        ) {
+                            throw new Error(
+                                "getUserMedia not supported on this browser."
+                            );
+                        }
                         return navigator.mediaDevices.getUserMedia({
                             audio: true,
                         });
                     })
                     .then((stream) => {
+                        localStream = stream; // Save the local stream for toggling mic
                         stream.getTracks().forEach((track) => {
                             peerConnection.addTrack(track, stream);
                         });
@@ -526,6 +516,7 @@
                         console.error("Error creating answer: ", error);
                     });
             }
+
             function closePeerConnection(userId) {
                 if (peerConnections[userId]) {
                     peerConnections[userId].close();
