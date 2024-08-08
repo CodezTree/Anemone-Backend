@@ -11,8 +11,23 @@ app.use(express.static("public"));
 // 방별로 유저를 관리하기 위한 객체
 const rooms = {};
 
+const MAX_USER = 5;
+const BASE_TIME = 60 * 3;
+const ADDITION_TIME = 30;
+const ADVICE_TIME = 60 * 1.5;
+const timer_time = 0;
+
 io.on("connection", (socket) => {
     console.log("a user connected:", socket.id);
+
+    socket.on("tryJoin", (roomCode) => {
+        // room 정원 5명
+        if (rooms[roomCode].length == 5) {
+            socket.emit("roomFull");
+        } else {
+            socket.emit("joinOK", roomCode);
+        }
+    });
 
     socket.on("joinRoom", ({ roomCode, userName }) => {
         socket.join(roomCode);
