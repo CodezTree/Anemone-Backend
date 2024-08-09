@@ -670,13 +670,17 @@
 
                 peerConnection.ontrack = (event) => {
                     const audio = document.querySelector(`#audio-${userId}`);
-                    if (audio.srcObject !== event.streams[0]) {
-                        audio.srcObject = event.streams[0];
-                        console.log(
-                            "audio player registered : " +
-                                audio +
-                                " / " +
-                                event.streams[0]
+
+                    if (audio) {
+                        if (audio.srcObject !== event.streams[0]) {
+                            audio.srcObject = event.streams[0];
+                            console.log(
+                                "Audio stream registered for user: " + userId
+                            );
+                        }
+                    } else {
+                        console.error(
+                            `Audio element not found for user ${userId}`
                         );
                     }
                 };
