@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Admin Notice Page</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f8ff;
+                color: #333;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+            }
+
+            h1 {
+                color: #2c3e50;
+                margin-bottom: 20px;
+            }
+
+            input[type="text"],
+            textarea {
+                padding: 10px;
+                border: 1px solid #bdc3c7;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                width: 300px;
+            }
+
+            button {
+                padding: 10px 20px;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            button:hover {
+                background-color: #2980b9;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Admin Notice</h1>
+        <input
+            type="text"
+            id="roomCode"
+            placeholder="Enter Room Code"
+            required />
+        <textarea
+            id="noticeText"
+            placeholder="Enter your notice"
+            rows="5"></textarea>
+        <button onclick="sendNotice()">Send Notice</button>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
+
+            function sendNotice() {
+                const roomCode = document.getElementById("roomCode").value;
+                const noticeText = document.getElementById("noticeText").value;
+
+                if (roomCode && noticeText) {
+                    socket.emit("sendAdminNotice", {
+                        roomCode,
+                        notice: noticeText,
+                    });
+                    alert("Notice sent to room: " + roomCode);
+                } else {
+                    alert("Please fill in both the room code and the notice.");
+                }
+            }
+        </script>
+    </body>
+</html>
