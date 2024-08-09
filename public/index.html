@@ -102,9 +102,29 @@
                 justify-content: center;
             }
 
+            .ready-button {
+                display: flex;
+                justify-content: center;
+            }
+
+            .ready-button button {
+                margin: 5px;
+            }
+
+            .ready-status {
+                margin-top: 4px;
+                margin-bottom: 8px;
+            }
+
+            .ready-status img {
+                width: 24px;
+                height: 24px;
+                vertical-align: middle;
+            }
+
             .mic-status {
                 margin-top: 8px;
-                margin-bottom: 8px;
+                margin-bottom: 4px;
             }
 
             .mic-status img {
@@ -117,6 +137,15 @@
                 margin-top: 8px;
                 margin-bottom: 8px;
             }
+
+            .notice-box {
+                margin-top: 8px;
+                margin-bottom: 8px;
+                margin-bottom: 10px;
+                font-size: x-large;
+                font-weight: bolder;
+                color: #ff6666;
+            }
         </style>
     </head>
     <body>
@@ -127,6 +156,13 @@
                 id="userName"
                 placeholder="Enter Your Name"
                 required />
+            <select id="animalChoice">
+                <option value="dog">Dog</option>
+                <option value="cat">Cat</option>
+                <option value="squirrel">Squirrel</option>
+                <option value="fox">Fox</option>
+                <option value="panda">Panda</option>
+            </select>
             <button type="submit">Join</button>
         </form>
         <form id="roomForm" style="display: none">
@@ -138,6 +174,8 @@
             <button type="submit">Join Room</button>
         </form>
         <div id="animalContainer">
+            <div id="noticeBox" class="notice-box">NOTICE :</div>
+
             <div id="userCounter" class="user-counter">1 / 5</div>
             <div id="userContainer" class="user-container"></div>
             <div class="expression-buttons">
@@ -150,6 +188,9 @@
             <div class="mic-button">
                 <button onclick="toggleMic()">🎤 Toggle Mic</button>
             </div>
+            <div class="ready-button">
+                <button onclick="toggleReady()">✅ Ready</button>
+            </div>
         </div>
 
         <script src="/socket.io/socket.io.js"></script>
@@ -161,6 +202,7 @@
             const animalContainer = document.getElementById("animalContainer");
             const userContainer = document.getElementById("userContainer");
             const userCounter = document.getElementById("userCounter");
+            const noticeBox = document.getElementById("noticeBox");
 
             let isMicOn = false;
             let roomCode = null;
@@ -170,15 +212,54 @@
             let onFrameId = null;
             let onFrame;
             let userCount = 0;
+            let selectedAnimal = "dog"; // 기본 값으로 설정
+
+            // 방 시작 준비 확인
+            let isReady = false;
 
             const peerConnections = {};
             const config = {
                 iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
             };
 
+            // 동물 리스트
+            const animalImages = {
+                dog: {
+                    neutral: "images/dog_neutral.png",
+                    happy: "images/dog_happy.png",
+                    sad: "images/dog_sad.png",
+                    surprised: "images/dog_surprised.png",
+                },
+                cat: {
+                    neutral: "images/cat_neutral.png",
+                    happy: "images/cat_happy.png",
+                    sad: "images/dog_sad.png",
+                    surprised: "images/dog_surprised.png",
+                },
+                squirrel: {
+                    neutral: "images/squirrel_neutral.png",
+                    happy: "images/squirrel_happy.png",
+                    sad: "images/dog_sad.png",
+                    surprised: "images/dog_surprised.png",
+                },
+                fox: {
+                    neutral: "images/fox_neutral.png",
+                    happy: "images/fox_happy.png",
+                    sad: "images/dog_sad.png",
+                    surprised: "images/dog_surprised.png",
+                },
+                panda: {
+                    neutral: "images/panda_neutral.png",
+                    happy: "images/panda_happy.png",
+                    sad: "images/dog_sad.png",
+                    surprised: "images/dog_surprised.png",
+                },
+            };
+
             nameForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 userName = document.getElementById("userName").value;
+                selectedAnimal = document.getElementById("animalChoice").value; // 선택된 동물 저장
                 nameForm.style.display = "none";
                 roomForm.style.display = "block";
             });
@@ -243,7 +324,11 @@
                     });
 
                 //룸 조인
-                socket.emit("joinRoom", { roomCode, userName });
+                socket.emit("joinRoom", {
+                    roomCode,
+                    userName,
+                    animal: selectedAnimal,
+                });
                 roomForm.style.display = "none";
                 animalContainer.style.display = "flex";
 
@@ -252,15 +337,26 @@
                 socket.off("userLeft");
                 socket.off("changeExpression");
                 socket.off("toggleMic");
+                socket.off("toggleReady");
+                socket.off("syncState");
                 socket.off("offer");
                 socket.off("answer");
                 socket.off("candidate");
 
                 console.log("My socket id : " + socket.id);
 
+                socket.on("adminNotice", (notice_string) => {
+                    noticeBox.innerText = "NOTICE : " + notice_string;
+                });
+
                 socket.on("existingUsers", (users) => {
                     users.forEach((user) => {
-                        addUser(user.userId, user.userName, user.isMicOn);
+                        addUser(
+                            user.userId,
+                            user.userName,
+                            user.isMicOn,
+                            user.animal
+                        );
                         userCount++;
                     });
                     userCounter.innerText = userCount + " / 5";
@@ -272,8 +368,14 @@
                         return;
                     }
 
-                    addUser(data.userId, data.userName, data.isMicOn);
+                    addUser(
+                        data.userId,
+                        data.userName,
+                        data.isMicOn,
+                        data.animal
+                    );
                     createOffer(data.userId);
+                    syncState(data.userId);
 
                     userCount++;
                     userCounter.innerText = userCount + " / 5";
@@ -302,6 +404,24 @@
                     console.log(
                         `Mic for user ${data.userId} is ${
                             data.isMicOn ? "on" : "off"
+                        }`
+                    );
+                });
+
+                socket.on("toggleReady", (data) => {
+                    const userBox = document.getElementById(data.userId);
+                    if (userBox) {
+                        const readyStatus =
+                            userBox.querySelector(".ready-status");
+                        readyStatus.innerHTML = `<img src="${
+                            data.isReady
+                                ? "icons/checkIcon.png"
+                                : "icons/notcheckIcon.png"
+                        }" alt="Ready Status">`;
+                    }
+                    console.log(
+                        `Ready for user ${data.userId} is ${
+                            data.isReady ? "ready" : "not ready"
                         }`
                     );
                 });
@@ -350,6 +470,30 @@
                         peerConnections[data.from].addIceCandidate(candidate);
                     }
                 });
+
+                socket.on("syncState", (data) => {
+                    console.log(
+                        "Sync from other user (" + data.from + "starts."
+                    );
+
+                    const userBox = document.getElementById(data.from);
+                    if (userBox) {
+                        // Sync Mic Status
+                        const micStatus = userBox.querySelector(".mic-status");
+                        micStatus.innerHTML = `<img src="${
+                            data.isMicOn ? "mic_on.png" : "mic_off.png"
+                        }" alt="Mic Status">`;
+
+                        // Sync Ready Status
+                        const readyStatus =
+                            userBox.querySelector(".ready-status");
+                        readyStatus.innerHTML = `<img src="${
+                            data.isReady
+                                ? "icons/checkIcon.png"
+                                : "icons/notcheckIcon.png"
+                        }" alt="Ready Status">`;
+                    }
+                });
             }
 
             function changeVolumeColor(vol) {
@@ -377,20 +521,23 @@
                 return Math.round(scaledValue);
             }
 
-            function addUser(userId, name, micStatus) {
+            function addUser(userId, name, micStatus, animal = "dog") {
                 if (document.getElementById(userId)) return;
 
                 const userBox = document.createElement("div");
                 userBox.id = userId;
                 userBox.className = "user-box";
                 userBox.innerHTML = `
-                <img src="neutral_animal.png" alt="Animal Character" class="animal-image">
-                <p class="name-box">${name}</p>
-                <p class="mic-status"><img src="${
-                    micStatus ? "mic_on.png" : "mic_off.png"
-                }" alt="Mic Status"></p>
-                <audio id="audio-${userId}" autoplay></audio>
-            `;
+    <img src="${
+        animalImages[animal].neutral
+    }" alt="Animal Character" class="animal-image">
+    <p class="name-box">${name}</p>
+    <p class="mic-status"><img src="${
+        micStatus ? "mic_on.png" : "mic_off.png"
+    }" alt="Mic Status"></p>
+    <p class="ready-status"><img src="icons/notcheckIcon.png" alt="Ready Status"</p>
+    <audio id="audio-${userId}" autoplay></audio>
+    `;
                 userContainer.appendChild(userBox);
             }
 
@@ -407,6 +554,7 @@
                     roomCode,
                     expression,
                     userId: socket.id,
+                    animal: selectedAnimal, // 선택한 동물 정보를 함께 전송
                 });
 
                 if (timeoutId) {
@@ -418,6 +566,7 @@
                         roomCode,
                         expression: "neutral",
                         userId: socket.id,
+                        animal: selectedAnimal, // 선택한 동물 정보를 함께 전송
                     });
                 }, 2000);
             }
@@ -426,21 +575,41 @@
                 const userBox = document.getElementById(data.userId);
                 if (userBox) {
                     const animalImage = userBox.querySelector(".animal-image");
+                    const images = animalImages[data.animal]; // 사용자의 선택된 동물에 따른 이미지 가져오기
                     switch (data.expression) {
                         case "happy":
-                            animalImage.src = "happy_animal.png";
+                            animalImage.src = images.happy;
                             break;
                         case "sad":
-                            animalImage.src = "sad_animal.png";
+                            animalImage.src = images.sad;
                             break;
                         case "surprised":
-                            animalImage.src = "surprised_animal.png";
+                            animalImage.src = images.surprised;
                             break;
                         case "neutral":
-                            animalImage.src = "neutral_animal.png";
+                        default:
+                            animalImage.src = images.neutral;
                             break;
                     }
                 }
+            }
+
+            function syncState(userId) {
+                socket.emit("syncState", {
+                    to: userId,
+                    from: socket.id,
+                    isMicOn: isMicOn,
+                    isReady: isReady,
+                });
+            }
+
+            function toggleReady() {
+                isReady = !isReady;
+                socket.emit("toggleReady", {
+                    roomCode,
+                    isReady,
+                    userId: socket.id,
+                });
             }
 
             function toggleMic() {

@@ -33,19 +33,22 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("joinRoom", ({ roomCode, userName }) => {
+    socket.on("joinRoom", ({ roomCode, userName, animal }) => {
         socket.join(roomCode);
 
         const newUser = {
             userId: socket.id,
             userName: userName,
             isMicOn: false,
+            animal: animal, // 사용자가 선택한 동물 정보 추가
         };
         rooms[roomCode].push(newUser);
 
         socket.emit("existingUsers", rooms[roomCode]);
 
-        console.log(`User ${userName} (${socket.id}) joined room ${roomCode}`);
+        console.log(
+            `User ${userName} (${socket.id}) joined room ${roomCode} with animal ${animal}`
+        );
         io.to(roomCode).emit("userJoined", newUser);
 
         socket.on("disconnect", () => {
@@ -59,12 +62,25 @@ io.on("connection", (socket) => {
         });
     });
 
+    socket.on("sendAdminNotice", ({ roomCode, notice }) => {
+        io.to(roomCode).emit("adminNotice", notice);
+        console.log(`Admin notice sent to room ${roomCode}: ${notice}`);
+    });
+
+    socket.on("syncState", (data) => {
+        io.to(data.to).emit("syncState", data);
+    });
+
     socket.on("changeExpression", (data) => {
         io.to(data.roomCode).emit("changeExpression", data);
     });
 
     socket.on("toggleMic", (data) => {
         io.to(data.roomCode).emit("toggleMic", data);
+    });
+
+    socket.on("toggleReady", (data) => {
+        io.to(data.roomCode).emit("toggleReady", data);
     });
 
     // WebRTC signaling
