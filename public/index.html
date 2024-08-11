@@ -5,22 +5,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Animon</title>
         <style>
+            :root {
+                --arrow-bg: rgba(255, 255, 255, 0.3);
+                --arrow-icon: url(https://upload.wikimedia.org/wikipedia/commons/9/9d/Caret_down_font_awesome_whitevariation.svg);
+                --option-bg: white;
+                --select-bg: rgba(255, 255, 255, 0.2);
+            }
+
             /* 스타일 부분은 기존과 동일합니다. */
             body {
                 font-family: Arial, sans-serif;
                 background-color: #f0f8ff;
+                background-image: url("background_forest.png");
+                background-size: 100%;
                 color: #333;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 margin: 0;
                 padding: 0;
+                height: 100%;
                 justify-content: center;
             }
 
             h1 {
                 margin-bottom: 10px;
                 color: #2c3e50;
+                text-align: center;
             }
 
             form {
@@ -37,7 +48,7 @@
 
             button {
                 padding: 10px 20px;
-                background-color: #3498db;
+                background-color: #e4a565;
                 color: white;
                 border: none;
                 border-radius: 5px;
@@ -48,7 +59,7 @@
             }
 
             button:hover {
-                background-color: #2980b9;
+                background-color: #de9d5c;
             }
 
             #animalContainer {
@@ -71,6 +82,9 @@
             }
 
             .user-box {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
                 border: 1px solid #bdc3c7;
                 border-radius: 25px;
                 margin: 8px;
@@ -78,12 +92,16 @@
                 width: 120px;
                 text-align: center;
                 background-color: white;
+                background-image: url("namecard_back.png");
+                background-size: cover;
+                background-position-x: 25%;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
 
             .animal-image {
                 width: 120px;
                 height: 120px;
+                border-radius: 60px;
             }
 
             .expression-buttons {
@@ -135,12 +153,21 @@
             .mic-status img {
                 width: 20px;
                 height: 20px;
+                background-color: white;
+                padding: 4px;
+                border-radius: 10px;
                 vertical-align: middle;
             }
 
             .name-box {
-                margin-top: 0px;
+                margin-top: 8px;
                 margin-bottom: 8px;
+                background-color: white;
+                border-radius: 0.2rem;
+                padding: 5px;
+                padding-left: 10px;
+                padding-right: 10px;
+                width: fit-content;
             }
 
             .notice-box {
@@ -150,6 +177,9 @@
                 font-size: x-large;
                 font-weight: bolder;
                 color: #ff6666;
+                background-color: white;
+                padding: 5px 10px 5px 10px;
+                border-radius: 0.2rem;
             }
 
             .intro-form {
@@ -166,53 +196,107 @@
                 align-items: center;
                 gap: 10px;
             }
+
+            .transparent-box {
+                border: 1px solid #abc8db;
+                border-radius: 25px;
+                padding: 15px;
+                margin-top: 30px;
+                backdrop-filter: blur(15px);
+                box-shadow: 2px 7px 15px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            select {
+                /* Reset */
+                appearance: none;
+                border: 0;
+                outline: 0;
+                font: inherit;
+                /* Personalize */
+                width: 10rem;
+                padding: 0.5rem 2rem 0.5rem 2rem;
+                background: var(--arrow-icon) no-repeat right 0.8em center /
+                        1.4em,
+                    linear-gradient(
+                        to left,
+                        var(--arrow-bg) 3em,
+                        var(--select-bg) 3em
+                    );
+                color: white;
+                border-radius: 0.25em;
+                box-shadow: 0 0 1em 0 rgba(0, 0, 0, 0.2);
+                cursor: pointer;
+                /* Remove IE arrow */
+                &::-ms-expand {
+                    display: none;
+                }
+                /* Remove focus outline */
+                &:focus {
+                    outline: none;
+                }
+                /* <option> colors */
+                option {
+                    color: inherit;
+                    background-color: var(--option-bg);
+                }
+            }
         </style>
     </head>
     <body>
-        <h1>Animon</h1>
-        <form id="nameForm" class="intro-form">
-            <img src="images/intro.jpeg" width="400px" />
-            <input
-                type="text"
-                id="userName"
-                placeholder="Enter Your Name"
-                required />
-            <select id="animalChoice">
-                <option value="dog">Dog</option>
-                <option value="cat">Cat</option>
-                <option value="squirrel">Squirrel</option>
-                <option value="fox">Fox</option>
-                <option value="panda">Panda</option>
-            </select>
-            <button type="submit">Join</button>
-        </form>
-        <form id="roomForm" class="room-code-form">
-            <img src="images/intro.jpeg" width="400px" />
-            <input
-                type="text"
-                id="roomCode"
-                placeholder="Enter Room Code"
-                required />
-            <button type="submit">Join Room</button>
-        </form>
-        <div id="animalContainer">
-            <div id="noticeBox" class="notice-box">NOTICE :</div>
+        <div id="transparentBox" class="transparent-box">
+            <h1>Animon</h1>
+            <form id="nameForm" class="intro-form">
+                <img
+                    src="images/intro.jpeg"
+                    width="400px"
+                    style="border-radius: 30px" />
+                <input
+                    type="text"
+                    id="userName"
+                    placeholder="Enter Your Name"
+                    required />
+                <select id="animalChoice">
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="squirrel">Squirrel</option>
+                    <option value="fox">Fox</option>
+                    <option value="panda">Panda</option>
+                </select>
+                <button type="submit">Join</button>
+            </form>
+            <form id="roomForm" class="room-code-form">
+                <img
+                    src="images/intro.jpeg"
+                    width="400px"
+                    style="border-radius: 30px" />
+                <input
+                    type="text"
+                    id="roomCode"
+                    placeholder="Enter Room Code"
+                    required />
+                <button type="submit">Join Room</button>
+            </form>
+            <div id="animalContainer">
+                <div id="noticeBox" class="notice-box">NOTICE :</div>
 
-            <div id="userCounter" class="user-counter">1 / 5</div>
-            <div id="userContainer" class="user-container"></div>
-            <div class="expression-buttons">
-                <button onclick="changeExpression('happy')">😊 Happy</button>
-                <button onclick="changeExpression('sad')">😢 Sad</button>
-                <button onclick="changeExpression('surprised')">
-                    😲 Surprised
-                </button>
-            </div>
-            <div class="tool-buttons">
-                <div class="mic-button">
-                    <button onclick="toggleMic()">🎤 Toggle Mic</button>
+                <div id="userCounter" class="user-counter">1 / 5</div>
+                <div id="userContainer" class="user-container"></div>
+                <div class="expression-buttons">
+                    <button onclick="changeExpression('happy')">
+                        😊 Happy
+                    </button>
+                    <button onclick="changeExpression('sad')">😢 Sad</button>
+                    <button onclick="changeExpression('surprised')">
+                        😲 Surprised
+                    </button>
                 </div>
-                <div class="ready-button">
-                    <button onclick="toggleReady()">✅ Ready</button>
+                <div class="tool-buttons">
+                    <div class="mic-button">
+                        <button onclick="toggleMic()">🎤 Toggle Mic</button>
+                    </div>
+                    <div class="ready-button">
+                        <button onclick="toggleReady()">✅ Ready</button>
+                    </div>
                 </div>
             </div>
         </div>
