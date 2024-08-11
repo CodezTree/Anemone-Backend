@@ -219,7 +219,14 @@
 
             const peerConnections = {};
             const config = {
-                iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    {
+                        urls: "turn:141.164.63.143",
+                        username: "animon",
+                        credential: "animon",
+                    },
+                ],
             };
 
             // 동물 리스트
@@ -233,26 +240,26 @@
                 cat: {
                     neutral: "images/cat_neutral.png",
                     happy: "images/cat_happy.png",
-                    sad: "images/dog_sad.png",
-                    surprised: "images/dog_surprised.png",
+                    sad: "images/cat_sad.png",
+                    surprised: "images/cat_surprised.png",
                 },
                 squirrel: {
                     neutral: "images/squirrel_neutral.png",
                     happy: "images/squirrel_happy.png",
-                    sad: "images/dog_sad.png",
-                    surprised: "images/dog_surprised.png",
+                    sad: "images/squirrel_sad.png",
+                    surprised: "images/squirrel_surprised.png",
                 },
                 fox: {
                     neutral: "images/fox_neutral.png",
                     happy: "images/fox_happy.png",
-                    sad: "images/dog_sad.png",
-                    surprised: "images/dog_surprised.png",
+                    sad: "images/fox_sad.png",
+                    surprised: "images/fox_surprised.png",
                 },
                 panda: {
                     neutral: "images/panda_neutral.png",
                     happy: "images/panda_happy.png",
-                    sad: "images/dog_sad.png",
-                    surprised: "images/dog_surprised.png",
+                    sad: "images/panda_sad.png",
+                    surprised: "images/panda_surprised.png",
                 },
             };
 
@@ -368,6 +375,13 @@
                         return;
                     }
 
+                    console.log(
+                        "\n" +
+                            data.userId +
+                            " joined room " +
+                            roomCode +
+                            "!! \n\n"
+                    );
                     addUser(
                         data.userId,
                         data.userName,
@@ -385,6 +399,7 @@
                     removeUser(data.userId);
                     closePeerConnection(data.userId);
 
+                    console.log("User " + data.userId + " left voice room.");
                     userCount--;
                     userCounter.innerText = userCount + " / 5";
                 });
@@ -473,7 +488,7 @@
 
                 socket.on("syncState", (data) => {
                     console.log(
-                        "Sync from other user (" + data.from + "starts."
+                        "Sync from other user (" + data.from + " starts."
                     );
 
                     const userBox = document.getElementById(data.from);
@@ -656,7 +671,7 @@
                     if (event.candidate) {
                         console.log(
                             "offer emiting candiate to (" +
-                                socket.id +
+                                userId +
                                 ") - " +
                                 event.candidate
                         );
@@ -728,6 +743,9 @@
                     const audio = document.querySelector(`#audio-${data.from}`);
                     if (audio.srcObject !== event.streams[0]) {
                         audio.srcObject = event.streams[0];
+                        console.log(
+                            "Audio stream registered for user: " + data.from
+                        );
                     }
                 };
 
