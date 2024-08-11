@@ -511,11 +511,11 @@
                 });
             }
 
-            function changeVolumeColor(vol) {
+            function changeVolumeColor(vol, id = socket.id) {
                 //console.log("Changing volume color base on => " + vol);
 
                 const VOL_METER_MAX = 10;
-                const user_box = document.getElementById(socket.id);
+                const user_box = document.getElementById(id);
                 const normal_number = normalizeToInteger(vol, 0, VOL_METER_MAX);
 
                 if (user_box) {
@@ -683,21 +683,8 @@
                     }
                 };
 
-                peerConnection.ontrack = (event) => {
-                    const audio = document.querySelector(`#audio-${userId}`);
-
-                    if (audio) {
-                        if (audio.srcObject !== event.streams[0]) {
-                            audio.srcObject = event.streams[0];
-                            console.log(
-                                "Audio stream registered for user: " + userId
-                            );
-                        }
-                    } else {
-                        console.error(
-                            `Audio element not found for user ${userId}`
-                        );
-                    }
+                peerConnection.ontrack = peerConnection.ontrack = (event) => {
+                    handleAudioStream(event, userId); // 여기서 handleAudioStream 함수 사용
                 };
 
                 if (localStream) {
@@ -739,14 +726,8 @@
                     }
                 };
 
-                peerConnection.ontrack = (event) => {
-                    const audio = document.querySelector(`#audio-${data.from}`);
-                    if (audio.srcObject !== event.streams[0]) {
-                        audio.srcObject = event.streams[0];
-                        console.log(
-                            "Audio stream registered for user: " + data.from
-                        );
-                    }
+                peerConnection.ontrack = peerConnection.ontrack = (event) => {
+                    handleAudioStream(event, data.from); // 여기서 handleAudioStream 함수 사용
                 };
 
                 peerConnection
@@ -779,6 +760,46 @@
                 if (peerConnections[userId]) {
                     peerConnections[userId].close();
                     delete peerConnections[userId];
+                }
+            }
+
+            function handleAudioStream(event, userId) {
+                const audio = document.querySelector(`#audio-${userId}`);
+
+                if (audio) {
+                    if (audio.srcObject !== event.streams[0]) {
+                        audio.srcObject = event.streams[0];
+                        console.log(
+                            "Audio stream registered for user: " + userId
+                        );
+
+                        // 소리 크기 분석을 위한 AudioContext 설정
+                        const context = new AudioContext();
+                        const analyzer = context.createAnalyser();
+                        const mediaStreamSource =
+                            context.createMediaStreamSource(event.streams[0]);
+                        mediaStreamSource.connect(analyzer);
+                        const pcmData = new Float32Array(analyzer.fftSize);
+
+                        // 상대방의 소리 크기에 따라 초록 테두리 표시
+                        const userBox = document.getElementById(userId);
+                        const analyzeAudio = () => {
+                            analyzer.getFloatTimeDomainData(pcmData);
+                            let sum = 0.0;
+                            for (const amplitude of pcmData) {
+                                sum += amplitude * amplitude;
+                            }
+                            const rms = Math.sqrt(sum / pcmData.length);
+                            const normalizedVolume = Math.min(1, rms / 0.5);
+
+                            changeVolumeColor(normalizedVolume * 10, userId);
+
+                            requestAnimationFrame(analyzeAudio);
+                        };
+                        analyzeAudio(); // 분석 함수 호출
+                    }
+                } else {
+                    console.error(`Audio element not found for user ${userId}`);
                 }
             }
         </script>
