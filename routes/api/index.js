@@ -7,4 +7,6 @@ router.get("/getRoomList", controller.getRoomList);
 
 router.post("/tryJoinRoom", controller.tryJoinRoom);
 
+router.post("/addUserEmailNickname", controller.addUserEmailNickname);
+
 module.exports = router;
