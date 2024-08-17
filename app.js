@@ -6,7 +6,27 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+// CORS
+const cors = require("cors");
+const allowlist = ["https://codeztree.xyz", "http://localhost:3333"];
+
+const corsOptionsDelegate = function (req, callback) {
+    var corsOptions;
+    if (allowlist.indexOf(req.header("Origin")) !== -1) {
+        corsOptions = { origin: true };
+    } else {
+        corsOptions = { origin: false };
+    }
+    callback(null, corsOptions);
+};
+
+var apiRouter = require("./routes/api");
+
 app.use(express.static("public"));
+
+app.use(cors(corsOptionsDelegate));
+app.use(express.json());
+app.use("/api", apiRouter);
 
 // 방별로 유저를 관리하기 위한 객체
 const rooms = {};
@@ -22,11 +42,11 @@ io.on("connection", (socket) => {
 
     socket.on("tryJoin", (roomCode) => {
         if (!rooms[roomCode]) {
-            rooms[roomCode] = [];
+            rooms[roomCode] = { users: [], readyCount: 0 };
         }
 
         // room 정원 5명
-        if (rooms[roomCode].length == 5) {
+        if (rooms[roomCode].users.length == MAX_USER) {
             socket.emit("roomFull");
         } else {
             socket.emit("joinOK", roomCode);
@@ -40,11 +60,12 @@ io.on("connection", (socket) => {
             userId: socket.id,
             userName: userName,
             isMicOn: false,
+            isReady: false,
             animal: animal, // 사용자가 선택한 동물 정보 추가
         };
-        rooms[roomCode].push(newUser);
+        rooms[roomCode].users.push(newUser);
 
-        socket.emit("existingUsers", rooms[roomCode]);
+        socket.emit("existingUsers", rooms[roomCode].users);
 
         console.log(
             `User ${userName} (${socket.id}) joined room ${roomCode} with animal ${animal}`
@@ -52,13 +73,28 @@ io.on("connection", (socket) => {
         io.to(roomCode).emit("userJoined", newUser);
 
         socket.on("disconnect", () => {
-            rooms[roomCode] = rooms[roomCode].filter(
-                (user) => user.userId !== socket.id
-            );
+            let room = rooms[roomCode];
+
+            room.users = room.users.filter((user) => user.userId !== socket.id);
+            // 준비 된 유저 다시 계산
+            room.readyCount = room.users.filter((user) => user.isReady).length;
+
             io.to(roomCode).emit("userLeft", { userId: socket.id });
             console.log(
                 `User ${userName} (${socket.id}) left room ${roomCode}`
             );
+
+            // 인원이 줄어든 후에도 남아있는 모든 사용자가 준비되었는지 확인
+            if (
+                room.users.length > 2 &&
+                room.readyCount === room.users.length
+            ) {
+                io.to(roomCode).emit("startSession");
+            }
+
+            if (room.users.length === 0) {
+                delete rooms[roomCode]; // 방에 사용자가 없으면 방 삭제
+            }
         });
     });
 
@@ -80,7 +116,32 @@ io.on("connection", (socket) => {
     });
 
     socket.on("toggleReady", (data) => {
-        io.to(data.roomCode).emit("toggleReady", data);
+        const room = rooms[data.roomCode];
+        const user = room.users.find((u) => u.userId === data.userId);
+
+        if (user) {
+            user.isReady = data.isReady;
+            if (data.isReady) {
+                room.readyCount++;
+            } else {
+                room.readyCount--;
+            }
+
+            io.to(data.roomCode).emit("toggleReady", data);
+
+            // 모든 사용자 준비되면 세션 시작
+            if (room.readyCount === room.users.length && room.readyCount > 2) {
+                io.to(data.roomCode).emit("startSession");
+            }
+        }
+    });
+
+    socket.on("roomMessage", (data) => {
+        if (data.message.length > 1000) {
+            data.message =
+                "<span style='color:red;'><b>Deleted.</b></span> Too Long Message.";
+        }
+        io.to(data.roomCode).emit("roomMessage", data);
     });
 
     // WebRTC signaling
