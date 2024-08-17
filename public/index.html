@@ -175,10 +175,15 @@
             .mic-status img {
                 width: 20px;
                 height: 20px;
-                background-color: white;
                 padding: 4px;
-                border-radius: 10px;
                 vertical-align: middle;
+            }
+
+            .status-box {
+                background-color: white;
+                border-radius: 10px;
+                display: flex;
+                flex-direction: row;
             }
 
             .name-box {
@@ -190,6 +195,18 @@
                 padding-left: 10px;
                 padding-right: 10px;
                 width: fit-content;
+            }
+
+            .timer-box {
+                background-color: white;
+                border-radius: 0.2rem;
+                padding: 7px;
+                padding-left: 40px;
+                padding-right: 40px;
+                font-size: medium;
+                text-align: center;
+                margin-bottom: 10px;
+                display: block; /* TODO : check hidden */
             }
 
             .notice-box {
@@ -229,6 +246,14 @@
                 backdrop-filter: blur(15px);
                 -webkit-backdrop-filter: blur(15px);
                 box-shadow: 2px 7px 15px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .pick-button {
+                visibility: hidden;
+                padding: 10px;
+                padding-top: 7px;
+                padding-bottom: 7px;
+                border-radius: 10px;
             }
 
             select {
@@ -395,6 +420,7 @@
             .chat-header button {
                 flex-basis: content;
                 font-size: medium;
+                color: white;
             }
 
             .chat-header h4 {
@@ -443,7 +469,7 @@
     </head>
     <body>
         <div id="transparentBox" class="transparent-box">
-            <h1>Animon</h1>
+            <h1 id="titleBox">Animon</h1>
             <form id="nameForm" class="intro-form">
                 <img
                     src="images/intro.jpeg"
@@ -490,6 +516,9 @@
             </form>
             <div id="animalContainer">
                 <div id="noticeBox" class="notice-box">NOTICE :</div>
+                <div id="timerBox" class="timer-box">
+                    ⏳ <b>03:00</b><br />📣 <b>창준</b>
+                </div>
 
                 <div id="userCounter" class="user-counter">1 / 5</div>
                 <div id="userContainer" class="user-container"></div>
@@ -564,6 +593,8 @@
             const noticeBox = document.getElementById("noticeBox");
             const chatFloatButton = document.getElementById("chatFloatButton");
             const chatPopup = document.getElementById("chatPopup");
+            const titleBox = document.getElementById("titleBox");
+            const timerBox = document.getElementById("timerBox");
 
             let isMicOn = false;
             let roomCode = null;
@@ -574,6 +605,11 @@
             let onFrame;
             let userCount = 0;
             let selectedAnimal = "dog"; // 기본 값으로 설정
+            let unmutable = true;
+            let sessionStarted = false;
+            let currentSpeakerId = undefined;
+
+            const minimumUser = 3;
 
             // 페이지 로드 시 실행될 코드
             window.onload = function () {
@@ -705,9 +741,11 @@
                     userName,
                     animal: selectedAnimal,
                 });
+
+                // 필요한 element display / none
                 roomForm.style.display = "none";
                 chatFloatButton.style.display = "block";
-
+                titleBox.style.display = "none";
                 animalContainer.style.display = "flex";
 
                 socket.off("existingUsers");
@@ -722,6 +760,10 @@
                 socket.off("candidate");
                 socket.off("startSession");
                 socket.off("roomMessage");
+                socket.off("sessionStarted");
+                socket.off("updateSpeaker");
+                socket.off("updateTimer");
+                socket.off("sessionEnded");
 
                 console.log("My socket id : " + socket.id);
 
@@ -888,16 +930,68 @@
                 });
 
                 socket.on("startSession", () => {
-                    alert("Session Starts!");
+                    // 모든 사용자를 음소거 / 발언권 없는 사용자도
+                    fixedMuteUser();
+                    sessionStarted = true;
+
+                    // 불필요한 UI 숨기기
+                    userCounter.style.display = "none";
                 });
 
-                socket.on("roomMessage", (data) => {
-                    // if (data.userId == socket.id) {
-                    //     return;
-                    // }
+                socket.on("updateSpeaker", (speakerId) => {
+                    // set current speaker
+                    currentSpeakerId = speakerId;
 
-                    receiveMessage(data.message, data.userName, data.animal);
+                    // 모든 사용자를 음소거 / 발언권 없는 사용자도
+                    if (socket.id === speakerId) {
+                        unmutable = true;
+                    } else {
+                        fixedMuteUser();
+                    }
                 });
+
+                socket.on("updateTimer", ({ timeLeft, feedback, originId }) => {
+                    // 타이머 UI를 업데이트
+                    updateTimerUI(timeLeft, feedback);
+
+                    if (feedback == 1 && originId == socket.id) {
+                        const elementsArr = Array.from(
+                            document.getElementsByClassName("pick-button")
+                        );
+
+                        elementsArr.forEach((button) => {
+                            if (button.parentElement.id != socket.id)
+                                button.style.visibility = "visible";
+                        });
+                    }
+                });
+
+                socket.on("sessionEnded", () => {
+                    alert("Session has ended.");
+                    // 필요에 따라 UI를 초기화
+                });
+
+                socket.on("pickButtonDisable", () => {
+                    // 선택했다면 or 다음 사람으로 넘어간다면 초기화
+                    selectFeedbackButtonInvisible();
+                });
+            }
+
+            function selectFeedbackButtonInvisible() {
+                // 모든 선택 버튼 visibility hidden
+                const elementsArr = Array.from(
+                    document.getElementsByClassName("pick-button")
+                );
+
+                elementsArr.forEach((button) => {
+                    button.style.visibility = "hidden";
+                });
+            }
+
+            function selectFeedback(feedbackUserBox) {
+                socket.emit("feedbackSelect", {
+                    feedbackUserId: feedbackUserBox.id,
+                    roomCode: roomCode,
                 });
             }
 
@@ -907,6 +1001,43 @@
                 if (userCount < minimumUser) {
                     userCounter.style.color = "red";
                 } else {
+                    userCounter.style.color = "#2c3e50";
+                }
+            }
+
+            function fixedMuteUser() {
+                // 마이크 켜져 있다면 끄기
+                if (isMicOn) {
+                    toggleMic();
+                }
+
+                unmutable = false;
+            }
+
+            function updateTimerUI(timeLeft, feedback) {
+                const minute = Math.floor(timeLeft / 60);
+                const second = timeLeft % 60;
+
+                const speakerName = document
+                    .getElementById(currentSpeakerId)
+                    .querySelector(".name-box").innerText;
+
+                let currentPartIndicator = "";
+                switch (feedback) {
+                    case 0:
+                        currentPartIndicator = "📣";
+                        break;
+                    case 1:
+                        currentPartIndicator = "🤔";
+                        break;
+                    case 2:
+                        currentPartIndicator = "💭";
+                        break;
+                }
+
+                timerBox.innerHTML = `⏳ <b>0${minute}:${
+                    second < 10 ? "0" + second : second
+                }</b><br />${currentPartIndicator} <b>${speakerName}</b>`;
             }
 
             function changeVolumeColor(vol, id = socket.id) {
@@ -945,10 +1076,18 @@
                         animalImages[animal].neutral
                     }" alt="Animal Character" class="animal-image">
                     <p class="name-box">${name}</p>
-                    <p class="mic-status"><img src="${
-                        micStatus ? "mic_on.png" : "mic_off.png"
-                    }" alt="Mic Status"></p>
-                    <p class="ready-status"><img src="icons/notcheckIcon.png" alt="Ready Status"></p>
+                    <p class="status-box">
+                        <p class="mic-status">
+                            <img src="${
+                                micStatus ? "mic_on.png" : "mic_off.png"
+                            }" alt="Mic Status" />
+                        </p>
+                        <p class="ready-status">
+                            <img src="icons/notcheckIcon.png" alt="Ready Status"/>
+                        </p>
+                    </p>
+                    
+                    <button class="pick-button" onclick="selectFeedback(this.parentElement)">✓</button>
                     <audio id="audio-${userId}" autoplay></audio>
                     `;
                 userContainer.appendChild(userBox);
@@ -1026,6 +1165,11 @@
             }
 
             function toggleMic() {
+                if (!unmutable && !isMicOn) {
+                    // mute 상태에서는 켜지 못하게
+                    return;
+                }
+
                 isMicOn = !isMicOn;
                 socket.emit("toggleMic", {
                     roomCode,
