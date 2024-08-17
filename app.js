@@ -38,10 +38,10 @@ app.use("/api", apiRouter);
 const rooms = {};
 
 const MAX_USER = 5;
-const BASE_TIME = 60 * 3; //60 * 3;
+const BASE_TIME = 30; //60 * 3;
 const ADDITION_TIME = 30;
-const FEEDBACK_TIME = 90; //60 * 1.5;
-const FEEDBACK_PICK_TIME = 15; //15;
+const FEEDBACK_TIME = 15; //60 * 1.5;
+const FEEDBACK_PICK_TIME = 10; //15;
 const timer_time = 0;
 
 io.on("connection", (socket) => {
@@ -192,6 +192,10 @@ io.on("connection", (socket) => {
             data.feedbackUserId,
             data.roomCode
         );
+    });
+
+    socket.on("handsOnSign", (data) => {
+        io.to(data.roomCode).emit("handsOnSign", data);
     });
 });
 

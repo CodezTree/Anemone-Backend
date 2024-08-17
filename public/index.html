@@ -156,6 +156,15 @@
                 margin: 5px;
             }
 
+            .handson-button {
+                display: none;
+                justify-content: center;
+            }
+
+            .handson-button button {
+                margin: 5px;
+            }
+
             .ready-status {
                 margin-top: 4px;
                 margin-bottom: 4px;
@@ -194,15 +203,61 @@
                 flex-direction: row;
             }
 
+            .me-handson {
+                display: none; /* 처음에는 none */
+                margin-top: 4px;
+                margin-bottom: 4px;
+                margin-right: 6px;
+                font-size: 20px;
+                justify-content: center;
+                align-items: center;
+                width: 28px;
+                height: 28px;
+            }
+
+            @keyframes wave {
+                0% {
+                    transform: rotate(-30deg);
+                    animation-timing-function: ease-in;
+                }
+                25% {
+                    transform: rotate(0deg);
+                    animation-timing-function: ease-out;
+                }
+                50% {
+                    transform: rotate(30deg);
+                    animation-timing-function: ease-in;
+                }
+                75% {
+                    transform: rotate(0deg);
+                    animation-timing-function: ease-out;
+                }
+                100% {
+                    transform: rotate(-30deg);
+                }
+            }
+
+            .waving-hand {
+                display: inline-block;
+                animation: wave 1.5s infinite;
+                transform-origin: 50% 90%; /* 손목이 흔들리도록 회전 중심 조정 */
+                font-size: 2rem; /* 손 크기 */
+            }
+
             .name-box {
                 margin-top: 8px;
                 margin-bottom: 8px;
                 background-color: white;
                 border-radius: 0.2rem;
                 padding: 5px;
-                padding-left: 10px;
-                padding-right: 10px;
-                width: fit-content;
+                padding-left: 5px;
+                padding-right: 5px;
+                margin-left: 10px;
+                margin-right: 10px;
+                width: 80px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip;
             }
 
             .timer-box {
@@ -256,12 +311,15 @@
                 box-shadow: 2px 7px 15px 8px rgba(0, 0, 0, 0.3);
             }
 
-            .pick-button {
+            button.pick-button {
                 visibility: hidden;
-                padding: 10px;
+                padding: 0px;
                 padding-top: 7px;
-                padding-bottom: 7px;
+                padding-bottom: 3px;
+                margin-top: 16px;
                 border-radius: 10px;
+                width: 5.5rem;
+                box-sizing: content-box;
             }
 
             select {
@@ -525,7 +583,7 @@
             <div id="animalContainer">
                 <div id="noticeBox" class="notice-box">NOTICE :</div>
                 <div id="timerBox" class="timer-box">
-                    ⏳ <b>03:00</b><br />📣 <b>창준</b>
+                    ⏳ <b>03:00</b><br />📣 <b>NOT STARTED</b>
                 </div>
 
                 <div id="userCounter" class="user-counter">1 / 5</div>
@@ -541,10 +599,15 @@
                 </div>
                 <div class="tool-buttons">
                     <div class="mic-button">
-                        <button onclick="toggleMic()">🎤 Toggle Mic</button>
+                        <button onclick="toggleMic()" id="micButton">
+                            🎤 Toggle Mic
+                        </button>
                     </div>
-                    <div class="ready-button">
+                    <div id="readyButton" class="ready-button">
                         <button onclick="toggleReady()">✅ Ready</button>
+                    </div>
+                    <div id="handsonButton" class="handson-button">
+                        <button onclick="handsOnSign()">✋ Have Idea</button>
                     </div>
                 </div>
             </div>
@@ -603,11 +666,15 @@
             const chatPopup = document.getElementById("chatPopup");
             const titleBox = document.getElementById("titleBox");
             const timerBox = document.getElementById("timerBox");
+            const handsOnButton = document.getElementById("handsonButton");
+            const readyButton = document.getElementById("readyButton");
+            const micButton = document.getElementById("micButton");
 
             let isMicOn = false;
             let roomCode = null;
             let userName = "";
             let timeoutId = null;
+            let handsOnTimeoutId = null;
             let localStream = null;
             let onFrameId = null;
             let onFrame;
@@ -616,6 +683,7 @@
             let unmutable = true;
             let sessionStarted = false;
             let currentSpeakerId = undefined;
+            let handsOn = false;
 
             const minimumUser = 3;
 
@@ -772,6 +840,9 @@
                 socket.off("updateSpeaker");
                 socket.off("updateTimer");
                 socket.off("sessionEnded");
+                socket.off("pickButtonDisable");
+                socket.off("roomDestroyed");
+                socket.off("handsOnSign");
 
                 console.log("My socket id : " + socket.id);
 
@@ -944,6 +1015,24 @@
 
                     // 불필요한 UI 숨기기
                     userCounter.style.visibility = "hidden";
+
+                    // 손들기 버튼 & UI 활성화
+                    handsOnButton.style.display = "flex";
+                    const handsOnArray = Array.from(
+                        document.getElementsByClassName("me-handson")
+                    );
+                    handsOnArray.forEach((ui) => {
+                        ui.style.display = "flex";
+                    });
+
+                    // 준비 버튼 & UI 비활성화
+                    readyButton.style.display = "none";
+                    const readyArray = Array.from(
+                        document.getElementsByClassName("ready-status")
+                    );
+                    readyArray.forEach((ui) => {
+                        ui.style.display = "none";
+                    });
                 });
 
                 socket.on("updateSpeaker", (speakerId) => {
@@ -953,8 +1042,10 @@
                     // 모든 사용자를 음소거 / 발언권 없는 사용자도
                     if (socket.id === speakerId) {
                         unmutable = true;
+                        micButton.innerText = "🎤 Toggle Mic";
                     } else {
                         fixedMuteUser();
+                        micButton.innerText = "🎤 WAIT ❌";
                     }
                 });
 
@@ -968,8 +1059,18 @@
                         );
 
                         elementsArr.forEach((button) => {
-                            if (button.parentElement.id != socket.id)
+                            // check handsOn
+                            const handsOnElement =
+                                button.parentElement.getElementsByClassName(
+                                    "me-handson"
+                                )[0];
+
+                            if (
+                                button.parentElement.id != socket.id &&
+                                handsOnElement.innerHTML === "✋"
+                            )
                                 button.style.visibility = "visible";
+                            else button.style.visibility = "hidden";
                         });
                     }
                 });
@@ -987,6 +1088,21 @@
                 socket.on("roomDestroyed", () => {
                     alert("Room has terminated, user churned.");
                     window.location.reload();
+                });
+
+                socket.on("handsOnSign", (data) => {
+                    const userBox = document.getElementById(data.userId);
+                    if (userBox) {
+                        const handsOn = userBox.querySelector(".me-handson");
+                        handsOn.innerHTML = data.handsOn ? "✋" : "😶";
+
+                        // waving animation
+                        if (data.handsOn) {
+                            handsOn.classList.add("waving-hand");
+                        } else {
+                            handsOn.classList.remove("waving-hand");
+                        }
+                    }
                 });
             }
 
@@ -1038,7 +1154,7 @@
                 let currentPartIndicator = "";
                 switch (feedback) {
                     case 0:
-                        currentPartIndicator = "📣";
+                        currentPartIndicator = "🎙️";
                         break;
                     case 1:
                         currentPartIndicator = "🤔";
@@ -1098,9 +1214,7 @@
                         <p class="ready-status">
                             <img src="icons/notcheckIcon.png" alt="Ready Status"/>
                         </p>
-                        <p class="me-handon">
-                            ✋
-                        </p>
+                        <p class="me-handson">😶</p>
                     </div>
                     
                     <button class="pick-button" onclick="selectFeedback(this.parentElement)">✓</button>
@@ -1137,6 +1251,16 @@
                         animal: selectedAnimal, // 선택한 동물 정보를 함께 전송
                     });
                 }, 2000);
+            }
+
+            function handsOnSign() {
+                handsOn = !handsOn;
+
+                socket.emit("handsOnSign", {
+                    roomCode: roomCode,
+                    userId: socket.id,
+                    handsOn: handsOn,
+                });
             }
 
             function updateExpression(data) {
