@@ -38,10 +38,10 @@ app.use("/api", apiRouter);
 const rooms = {};
 
 const MAX_USER = 5;
-const BASE_TIME = 30; //60 * 3;
+const BASE_TIME = 60 * 3; //60 * 3;
 const ADDITION_TIME = 30;
-const FEEDBACK_TIME = 20; //60 * 1.5;
-const FEEDBACK_PICK_TIME = 10; //15;
+const FEEDBACK_TIME = 90; //60 * 1.5;
+const FEEDBACK_PICK_TIME = 15; //15;
 const timer_time = 0;
 
 io.on("connection", (socket) => {
@@ -53,6 +53,8 @@ io.on("connection", (socket) => {
                 users: [],
                 readyCount: 0,
                 sessionFunc: undefined,
+                sessionStarted: false,
+                terminationNotified: false,
             };
         }
 
@@ -86,6 +88,14 @@ io.on("connection", (socket) => {
         socket.on("disconnect", () => {
             let room = rooms[roomCode];
 
+            console.log("test : ", room.sessionStarted, room.readyCount);
+
+            if (room.sessionStarted && !room.terminationNotified) {
+                // room boom haha
+                io.to(roomCode).emit("roomDestroyed");
+                room.terminationNotified = true;
+            }
+
             room.users = room.users.filter((user) => user.userId !== socket.id);
             // 준비 된 유저 다시 계산
             room.readyCount = room.users.filter((user) => user.isReady).length;
@@ -98,12 +108,17 @@ io.on("connection", (socket) => {
             // 인원이 줄어든 후에도 남아있는 모든 사용자가 준비되었는지 확인
             if (
                 room.users.length > 2 &&
-                room.readyCount === room.users.length
+                room.readyCount === room.users.length &&
+                !room.sessionStarted
             ) {
-                startSession(data.roomCode);
+                startSession(roomCode);
             }
 
             if (room.users.length === 0) {
+                if (room.sessionStarted) {
+                    room.sessionFunc.roomTermination();
+                }
+
                 delete rooms[roomCode]; // 방에 사용자가 없으면 방 삭제
             }
         });
@@ -173,7 +188,10 @@ io.on("connection", (socket) => {
     });
 
     socket.on("feedbackSelect", (data) => {
-        rooms[data.roomCode].sessionFunc(data.feedbackUserId, data.roomCode);
+        rooms[data.roomCode].sessionFunc.pickFeedbacker(
+            data.feedbackUserId,
+            data.roomCode
+        );
     });
 });
 
@@ -200,13 +218,18 @@ function startSession(roomCode) {
     const room = rooms[roomCode];
     if (!room || room.users.length === 0) return;
 
+    room.sessionStarted = true;
+
     let currentSpeakerIndex = 0;
     let originSpeakerId = undefined; // 원래 주도권을 갖고 있는 사람 ID
     let currentTime = BASE_TIME; // 3분
     let currentFeedbackTime = FEEDBACK_TIME; // 1분 30초
     let currentFeedbackPickTime = FEEDBACK_PICK_TIME; // 15초
+
+    // Intervals
     let feedbackPickTimer;
     let feedbackTimer;
+    let speakTimer;
 
     function nextSpeaker() {
         // selection invisible
@@ -222,7 +245,7 @@ function startSession(roomCode) {
             );
 
             // 발언 시간 타이머
-            const speakTimer = setInterval(() => {
+            speakTimer = setInterval(() => {
                 currentTime--;
                 io.to(roomCode).emit("updateTimer", {
                     timeLeft: currentTime,
@@ -338,7 +361,16 @@ function startSession(roomCode) {
         return interval;
     }
 
+    function roomTermination() {
+        clearInterval(speakTimer);
+        clearInterval(feedbackTimer);
+        clearInterval(feedbackPickTimer);
+    }
+
     nextSpeaker();
 
-    return pickFeedbacker;
+    return {
+        pickFeedbacker: pickFeedbacker,
+        roomTermination: roomTermination,
+    };
 }

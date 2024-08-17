@@ -108,10 +108,10 @@
                 flex-direction: column;
                 align-items: center;
                 border: 1px solid #bdc3c7;
-                border-radius: 25px;
-                margin: 8px;
-                padding: 8px;
-                width: 120px;
+                border-radius: 0.8rem;
+                margin: 0.5rem;
+                padding: 0.5rem;
+                width: 5.5rem;
                 text-align: center;
                 background-color: white;
                 background-image: url("namecard_back.png");
@@ -121,9 +121,9 @@
             }
 
             .animal-image {
-                width: 120px;
-                height: 120px;
-                border-radius: 60px;
+                width: 5.5rem;
+                height: 5.5rem;
+                border-radius: 3.9rem;
             }
 
             .expression-buttons {
@@ -158,7 +158,11 @@
 
             .ready-status {
                 margin-top: 4px;
-                margin-bottom: 8px;
+                margin-bottom: 4px;
+                margin-right: 6px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
             }
 
             .ready-status img {
@@ -168,8 +172,12 @@
             }
 
             .mic-status {
-                margin-top: 8px;
+                margin-top: 4px;
                 margin-bottom: 4px;
+                margin-left: 6px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
             }
 
             .mic-status img {
@@ -935,7 +943,7 @@
                     sessionStarted = true;
 
                     // 불필요한 UI 숨기기
-                    userCounter.style.display = "none";
+                    userCounter.style.visibility = "hidden";
                 });
 
                 socket.on("updateSpeaker", (speakerId) => {
@@ -974,6 +982,11 @@
                 socket.on("pickButtonDisable", () => {
                     // 선택했다면 or 다음 사람으로 넘어간다면 초기화
                     selectFeedbackButtonInvisible();
+                });
+
+                socket.on("roomDestroyed", () => {
+                    alert("Room has terminated, user churned.");
+                    window.location.reload();
                 });
             }
 
@@ -1074,9 +1087,9 @@
                 userBox.innerHTML = `
                     <img src="${
                         animalImages[animal].neutral
-                    }" alt="Animal Character" class="animal-image">
+                    }" alt="Animal Character" class="animal-image"/>
                     <p class="name-box">${name}</p>
-                    <p class="status-box">
+                    <div class="status-box">
                         <p class="mic-status">
                             <img src="${
                                 micStatus ? "mic_on.png" : "mic_off.png"
@@ -1085,7 +1098,10 @@
                         <p class="ready-status">
                             <img src="icons/notcheckIcon.png" alt="Ready Status"/>
                         </p>
-                    </p>
+                        <p class="me-handon">
+                            ✋
+                        </p>
+                    </div>
                     
                     <button class="pick-button" onclick="selectFeedback(this.parentElement)">✓</button>
                     <audio id="audio-${userId}" autoplay></audio>
