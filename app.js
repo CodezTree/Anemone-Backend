@@ -5,10 +5,16 @@ const socketIo = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
+const mysql = require("./database/mysql");
 
 // CORS
 const cors = require("cors");
-const allowlist = ["https://codeztree.xyz", "http://localhost:3333"];
+const allowlist = [
+    "https://codeztree.xyz",
+    "http://localhost:3333",
+    "https://animon-landing-page.vercel.app/",
+    "http://localhost:5500",
+];
 
 const corsOptionsDelegate = function (req, callback) {
     var corsOptions;
