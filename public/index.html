@@ -883,6 +883,10 @@
                     }
                 });
 
+                socket.on("roomMessage", (data) => {
+                    receiveMessage(data.message, data.userName, data.animal);
+                });
+
                 socket.on("startSession", () => {
                     alert("Session Starts!");
                 });
