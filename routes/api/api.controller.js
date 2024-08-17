@@ -58,6 +58,30 @@ exports.addRoom = (req, res, next) => {
     // 새로운 방을 등록 (테스트를 위한 방)
 };
 
+exports.addUserEmailNickname = (req, res, next) => {
+    // 이메일 등록해보자
+    const email = req.body.email;
+    const nickname = req.body.nickname;
+
+    if (email == undefined || nickname == undefined) {
+        res.status(400).end();
+        return;
+    }
+
+    const query =
+        "INSERT INTO LANDING_EMAIL_NICKNAME (email, nickname) VALUES (?, ?)";
+    const values = [email, nickname];
+    mysql.query(query, values, (err, results) => {
+        if (err) {
+            console.log("Survey register error : " + err);
+            res.status(500).end();
+            return;
+        }
+
+        res.status(200).end();
+    });
+};
+
 // 방에 유저 등록 함수
 function registerUserToRoom(roomId, userId, callback) {
     mysql.beginTransaction((err) => {

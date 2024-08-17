@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: "Animone",
+            name: "Animon",
             script: "app.js",
             instances: 0,
             exec_mode: "cluster",
