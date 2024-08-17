@@ -739,7 +739,7 @@
                         );
                         userCount++;
                     });
-                    userCounter.innerText = userCount + " / 5";
+                    updateUserCounter();
                 });
 
                 socket.on("userJoined", (data) => {
@@ -765,7 +765,7 @@
                     syncState(data.userId);
 
                     userCount++;
-                    userCounter.innerText = userCount + " / 5";
+                    updateUserCounter();
                 });
 
                 socket.on("userLeft", (data) => {
@@ -774,7 +774,7 @@
 
                     console.log("User " + data.userId + " left voice room.");
                     userCount--;
-                    userCounter.innerText = userCount + " / 5";
+                    updateUserCounter;
                 });
 
                 socket.on("changeExpression", (data) => {
@@ -894,6 +894,15 @@
 
                     receiveMessage(data.message, data.userName, data.animal);
                 });
+                });
+            }
+
+            function updateUserCounter() {
+                userCounter.innerText = userCount + " / 5";
+
+                if (userCount < minimumUser) {
+                    userCounter.style.color = "red";
+                } else {
             }
 
             function changeVolumeColor(vol, id = socket.id) {
