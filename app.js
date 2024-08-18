@@ -55,12 +55,16 @@ io.on("connection", (socket) => {
                 sessionFunc: undefined,
                 sessionStarted: false,
                 terminationNotified: false,
+                skipFlag: false,
+                speakerId: undefined,
             };
         }
 
         // room 정원 5명
         if (rooms[roomCode].users.length == MAX_USER) {
             socket.emit("roomFull");
+        } else if (rooms[roomCode].sessionStarted) {
+            socket.emit("roomAlreadyStarted");
         } else {
             socket.emit("joinOK", roomCode);
         }
@@ -197,6 +201,17 @@ io.on("connection", (socket) => {
     socket.on("handsOnSign", (data) => {
         io.to(data.roomCode).emit("handsOnSign", data);
     });
+
+    socket.on("turnSkip", (data) => {
+        let room = rooms[data.roomCode];
+
+        if (room) {
+            // 만약 현재 speaker와 스킵 유저 id가 같으면 스킵
+            if (data.userId == room.speakerId && !room.skipFlag) {
+                room.skipFlag = true;
+            }
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3333;
@@ -242,7 +257,9 @@ function startSession(roomCode) {
         if (currentSpeakerIndex < room.users.length) {
             const currentSpeaker = room.users[currentSpeakerIndex];
             io.to(roomCode).emit("updateSpeaker", currentSpeaker.userId);
+
             originSpeakerId = currentSpeaker.userId;
+            room.speakerId = currentSpeaker.userId;
 
             console.log(
                 "Room " + roomCode + " new speaker : " + originSpeakerId
@@ -257,7 +274,10 @@ function startSession(roomCode) {
                     originId: originSpeakerId,
                 });
 
-                if (currentTime <= 0) {
+                if (currentTime <= 0 || room.skipFlag) {
+                    // 스킵 원래대로
+                    room.skipFlag = false;
+
                     console.log(
                         "Room " +
                             roomCode +
@@ -298,6 +318,7 @@ function startSession(roomCode) {
 
         // 선택된 유저로 발언 상태 변경
         io.to(_roomCode).emit("updateSpeaker", feedbackId);
+        room.speakerId = feedbackId;
 
         // 피드백 시간 타이머
         feedbackTimer = setInterval(() => {
@@ -308,8 +329,10 @@ function startSession(roomCode) {
                 originId: originSpeakerId,
             });
 
-            // TODO: 스킵은 여기 조건에 roomCode로 확인하는 플래그? 넣으면 될 듯 함
-            if (currentFeedbackTime <= 0) {
+            if (currentFeedbackTime <= 0 || room.skipFlag) {
+                // 스킵 원래대로
+                room.skipFlag = false;
+
                 console.log(
                     "Room " +
                         _roomCode +
@@ -342,7 +365,10 @@ function startSession(roomCode) {
                 originId: originSpeakerId, // 원래 스피커 정보 -> 선택 활성화
             });
 
-            if (currentFeedbackPickTime <= 0) {
+            if (currentFeedbackPickTime <= 0 || room.skipFlag) {
+                // 스킵 원래대로
+                room.skipFlag = false;
+
                 console.log(
                     "Room " +
                         roomCode +

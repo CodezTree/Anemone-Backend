@@ -69,14 +69,14 @@
             }
 
             button {
-                padding: 10px 20px;
+                padding: 10px 12px;
                 background-color: #e4a565;
                 color: white;
                 border: none;
                 border-radius: 5px;
                 cursor: pointer;
                 transition: background-color 0.3s ease;
-                width: 130px; /* 버튼 너비를 균일하게 설정 */
+                width: 115px; /* 버튼 너비를 균일하게 설정 */
                 box-sizing: border-box; /* 패딩과 보더를 너비에 포함 */
             }
 
@@ -97,7 +97,7 @@
             }
 
             .user-counter {
-                margin-bottom: 10px;
+                margin-bottom: 2px;
                 font-size: x-large;
                 font-weight: bolder;
                 color: #2c3e50;
@@ -110,7 +110,7 @@
                 border: 1px solid #bdc3c7;
                 border-radius: 0.8rem;
                 margin: 0.5rem;
-                padding: 0.5rem;
+                padding: 4px;
                 width: 5.5rem;
                 text-align: center;
                 background-color: white;
@@ -244,12 +244,16 @@
                 font-size: 2rem; /* 손 크기 */
             }
 
+            .turn-skipbutton {
+                display: none;
+            }
+
             .name-box {
-                margin-top: 8px;
-                margin-bottom: 8px;
+                margin-top: 4px;
+                margin-bottom: 0px;
                 background-color: white;
                 border-radius: 0.2rem;
-                padding: 5px;
+                padding: 2px;
                 padding-left: 5px;
                 padding-right: 5px;
                 margin-left: 10px;
@@ -303,9 +307,9 @@
             .transparent-box {
                 border: 1px solid #abc8db;
                 border-radius: 25px;
-                padding: 15px;
+                padding: 10px;
                 margin: 20px;
-                margin-top: 30px;
+                margin-top: 22px;
                 backdrop-filter: blur(15px);
                 -webkit-backdrop-filter: blur(15px);
                 box-shadow: 2px 7px 15px 8px rgba(0, 0, 0, 0.3);
@@ -316,7 +320,7 @@
                 padding: 0px;
                 padding-top: 7px;
                 padding-bottom: 3px;
-                margin-top: 16px;
+                margin-top: 4px;
                 border-radius: 10px;
                 width: 5.5rem;
                 box-sizing: content-box;
@@ -587,6 +591,13 @@
                 </div>
 
                 <div id="userCounter" class="user-counter">1 / 5</div>
+                <button
+                    id="turnSkipButton"
+                    class="turn-skipbutton"
+                    onclick="turnSkip()">
+                    SKIP TURN
+                </button>
+
                 <div id="userContainer" class="user-container"></div>
                 <div class="expression-buttons">
                     <button onclick="changeExpression('happy')">
@@ -652,6 +663,9 @@
             </div>
         </div>
 
+        <!-- Sound Effect -->
+        <audio id="dingAudio" src="./sounds/ding_sound.mp3"></audio>
+
         <script src="/socket.io/socket.io.js"></script>
         <script>
             const socket = io();
@@ -669,6 +683,7 @@
             const handsOnButton = document.getElementById("handsonButton");
             const readyButton = document.getElementById("readyButton");
             const micButton = document.getElementById("micButton");
+            const turnSkipButton = document.getElementById("turnSkipButton");
 
             let isMicOn = false;
             let roomCode = null;
@@ -764,6 +779,10 @@
 
             socket.on("roomFull", () => {
                 alert("Room is full!");
+            });
+
+            socket.on("roomAlreadyStarted", () => {
+                alert("Room session already started!");
             });
 
             socket.on("joinOK", (roomCode) => {
@@ -895,7 +914,7 @@
 
                     console.log("User " + data.userId + " left voice room.");
                     userCount--;
-                    updateUserCounter;
+                    updateUserCounter();
                 });
 
                 socket.on("changeExpression", (data) => {
@@ -1014,7 +1033,11 @@
                     sessionStarted = true;
 
                     // 불필요한 UI 숨기기
-                    userCounter.style.visibility = "hidden";
+                    userCounter.style.display = "none";
+
+                    // turn skip 버튼 준비
+                    turnSkipButton.style.display = "block";
+                    turnSkipButton.style.visibility = "hidden";
 
                     // 손들기 버튼 & UI 활성화
                     handsOnButton.style.display = "flex";
@@ -1039,13 +1062,25 @@
                     // set current speaker
                     currentSpeakerId = speakerId;
 
+                    // Sound Effect
+                    dingSoundEffect();
+
                     // 모든 사용자를 음소거 / 발언권 없는 사용자도
                     if (socket.id === speakerId) {
+                        // 내가 발언권이 있다면
                         unmutable = true;
                         micButton.innerText = "🎤 Toggle Mic";
+
+                        // 스킵도 가능하게
+                        turnSkipButton.style.visibility = "visible";
+                        turnSkipButton.disabled = false;
                     } else {
                         fixedMuteUser();
                         micButton.innerText = "🎤 WAIT ❌";
+
+                        // 스킵 숨기기
+                        turnSkipButton.style.visibility = "hidden";
+                        turnSkipButton.disabled = true;
                     }
                 });
 
@@ -1057,6 +1092,10 @@
                         const elementsArr = Array.from(
                             document.getElementsByClassName("pick-button")
                         );
+
+                        // feedback pick && 주도권이 내꺼일땐
+                        // 아까 스킵했어도 다시 활성화 시켜줘야 함
+                        turnSkipButton.disabled = false;
 
                         elementsArr.forEach((button) => {
                             // check handsOn
@@ -1076,8 +1115,13 @@
                 });
 
                 socket.on("sessionEnded", () => {
-                    alert("Session has ended.");
                     // 필요에 따라 UI를 초기화
+                    alert("Session has ended.");
+
+                    // 자유롭게 대화 가능하도록
+                    unmutable = true;
+                    micButton.innerText = "🎤 Toggle Mic";
+                    turnSkipButton.style.visibility = "hidden";
                 });
 
                 socket.on("pickButtonDisable", () => {
@@ -1104,6 +1148,16 @@
                         }
                     }
                 });
+            }
+
+            // 자신의 턴을 스킵한다.
+            function turnSkip() {
+                socket.emit("turnSkip", {
+                    userId: socket.id,
+                    roomCode: roomCode,
+                });
+
+                turnSkipButton.disabled = true;
             }
 
             function selectFeedbackButtonInvisible() {
@@ -1552,6 +1606,14 @@
                 chatBody.appendChild(messageElement);
             }
             // ----- Chat System Ends -----
+
+            // ----- Sound Effect ------
+            function dingSoundEffect() {
+                const audio = document.getElementById("dingAudio");
+                audio.volume = 0.3;
+                audio.currentTime = 0;
+                audio.play();
+            }
         </script>
     </body>
 </html>
