@@ -38,7 +38,7 @@ app.use("/api", apiRouter);
 const rooms = {};
 
 const MAX_USER = 5;
-const BASE_TIME = 180; //60 * 3;
+const BASE_TIME = 20; //60 * 3;
 const ADDITION_TIME = 30;
 const FEEDBACK_TIME = 90; //60 * 1.5;
 const FEEDBACK_PICK_TIME = 15; //15;
@@ -78,6 +78,7 @@ io.on("connection", (socket) => {
             isMicOn: false,
             isReady: false,
             animal: animal, // 사용자가 선택한 동물 정보 추가
+            extendVote: false, // 연장 투표 정보
         };
         rooms[roomCode].users.push(newUser);
 
@@ -211,6 +212,20 @@ io.on("connection", (socket) => {
             }
         }
     });
+
+    socket.on("interestedSpeak", (data) => {
+        let room = rooms[data.roomCode];
+
+        if (room) {
+            let user = room.users.find((u) => u.userId === data.userId);
+
+            // 투표 정보 기입
+            user.extendVote = true;
+        }
+
+        // 정말 흥미롭군요!
+        io.to(data.roomCode).emit("interestedSpeak");
+    });
 });
 
 const PORT = process.env.PORT || 3333;
@@ -255,7 +270,10 @@ function startSession(roomCode) {
 
         if (currentSpeakerIndex < room.users.length) {
             const currentSpeaker = room.users[currentSpeakerIndex];
-            io.to(roomCode).emit("updateSpeaker", currentSpeaker.userId);
+            io.to(roomCode).emit("updateSpeaker", {
+                speakerId: currentSpeaker.userId,
+                isOriginSpeaker: true,
+            });
 
             originSpeakerId = currentSpeaker.userId;
             room.speakerId = currentSpeaker.userId;
@@ -274,6 +292,27 @@ function startSession(roomCode) {
                 });
 
                 if (currentTime <= 0 || room.skipFlag) {
+                    // 연장 상태 확인
+                    let extendCount = 0;
+                    room.users.forEach((user) => {
+                        if (user.extendVote) extendCount++;
+                    });
+                    // 스피커 제외 유저 과반수 이상 찬성인 경우
+                    if (
+                        extendCount >=
+                            Math.floor((room.users.length - 1) / 2) &&
+                        !room.skipFlag
+                    ) {
+                        currentTime += ADDITION_TIME; // 추가 시간
+                        io.to(roomCode).emit("speakExtended");
+
+                        // 유저 흥미 초기화
+                        room.users.forEach((user) => {
+                            user.extendVote = false;
+                        });
+                        return;
+                    }
+
                     // 스킵 원래대로
                     room.skipFlag = false;
 
@@ -316,7 +355,10 @@ function startSession(roomCode) {
         clearInterval(feedbackPickTimer);
 
         // 선택된 유저로 발언 상태 변경
-        io.to(_roomCode).emit("updateSpeaker", feedbackId);
+        io.to(_roomCode).emit("updateSpeaker", {
+            speakerId: feedbackId,
+            isOriginSpeaker: false,
+        });
         room.speakerId = feedbackId;
 
         // 피드백 시간 타이머
@@ -329,6 +371,26 @@ function startSession(roomCode) {
             });
 
             if (currentFeedbackTime <= 0 || room.skipFlag) {
+                // 연장 상태 확인
+                let extendCount = 0;
+                room.users.forEach((user) => {
+                    if (user.extendVote) extendCount++;
+                });
+                // 스피커 제외 유저 과반수 이상 찬성인 경우
+                if (
+                    extendCount >= Math.floor((room.users.length - 1) / 2) &&
+                    !room.skipFlag
+                ) {
+                    currentFeedbackTime += ADDITION_TIME; // 추가 시간
+                    io.to(_roomCode).emit("speakExtended");
+
+                    // 유저 흥미 초기화
+                    room.users.forEach((user) => {
+                        user.extendVote = false;
+                    });
+                    return;
+                }
+
                 // 스킵 원래대로
                 room.skipFlag = false;
 

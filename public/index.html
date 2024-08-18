@@ -248,6 +248,10 @@
                 display: none;
             }
 
+            .interested-button {
+                display: none;
+            }
+
             .name-box {
                 margin-top: 4px;
                 margin-bottom: 0px;
@@ -262,6 +266,15 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: clip;
+            }
+
+            .speaker-tool {
+                display: flex;
+                flex-direction: row;
+                width: fit-content;
+                justify-content: center;
+                align-items: center;
+                height: 36px;
             }
 
             .timer-box {
@@ -591,12 +604,20 @@
                 </div>
 
                 <div id="userCounter" class="user-counter">1 / 5</div>
-                <button
-                    id="turnSkipButton"
-                    class="turn-skipbutton"
-                    onclick="turnSkip()">
-                    SKIP TURN
-                </button>
+                <div class="speaker-tool">
+                    <button
+                        id="turnSkipButton"
+                        class="turn-skipbutton"
+                        onclick="turnSkip()">
+                        SKIP TURN
+                    </button>
+                    <button
+                        id="interestedButton"
+                        class="interested-button"
+                        onclick="interstedSpeak()">
+                        ❤️ MORE!
+                    </button>
+                </div>
 
                 <div id="userContainer" class="user-container"></div>
                 <div class="expression-buttons">
@@ -684,6 +705,8 @@
             const readyButton = document.getElementById("readyButton");
             const micButton = document.getElementById("micButton");
             const turnSkipButton = document.getElementById("turnSkipButton");
+            const interestedButton =
+                document.getElementById("interestedButton");
 
             let isMicOn = false;
             let roomCode = null;
@@ -699,6 +722,7 @@
             let sessionStarted = false;
             let currentSpeakerId = undefined;
             let handsOn = false;
+            let interestCount = 0;
 
             const minimumUser = 3;
 
@@ -862,6 +886,7 @@
                 socket.off("pickButtonDisable");
                 socket.off("roomDestroyed");
                 socket.off("handsOnSign");
+                socket.off("speakExtended");
 
                 console.log("My socket id : " + socket.id);
 
@@ -1037,7 +1062,6 @@
 
                     // turn skip 버튼 준비
                     turnSkipButton.style.display = "block";
-                    turnSkipButton.style.visibility = "hidden";
 
                     // 손들기 버튼 & UI 활성화
                     handsOnButton.style.display = "flex";
@@ -1058,12 +1082,23 @@
                     });
                 });
 
-                socket.on("updateSpeaker", (speakerId) => {
+                socket.on("updateSpeaker", ({ speakerId, isOriginSpeaker }) => {
+                    // reset interest count
+                    interestCount = 0;
+
                     // set current speaker
                     currentSpeakerId = speakerId;
 
                     // Sound Effect
                     dingSoundEffect();
+
+                    // new speaker -> vote reset
+                    if (speakerId != socket.id)
+                        interestedButton.style.display = "block";
+                    else interestedButton.style.display = "none"; // Speaker cannot express interested
+
+                    interestedButton.disabled = false;
+                    interestedButton.innerText = "❤️ MORE!";
 
                     // 모든 사용자를 음소거 / 발언권 없는 사용자도
                     if (socket.id === speakerId) {
@@ -1072,21 +1107,28 @@
                         micButton.innerText = "🎤 Toggle Mic";
 
                         // 스킵도 가능하게
-                        turnSkipButton.style.visibility = "visible";
+                        turnSkipButton.style.display = "block";
                         turnSkipButton.disabled = false;
                     } else {
                         fixedMuteUser();
                         micButton.innerText = "🎤 WAIT ❌";
 
                         // 스킵 숨기기
-                        turnSkipButton.style.visibility = "hidden";
+                        turnSkipButton.style.display = "none";
                         turnSkipButton.disabled = true;
                     }
                 });
 
                 socket.on("updateTimer", ({ timeLeft, feedback, originId }) => {
                     // 타이머 UI를 업데이트
-                    updateTimerUI(timeLeft, feedback);
+                    updateTimerUI(timeLeft, feedback, interestCount);
+
+                    if (feedback == 1) {
+                        interestCount = 0; // pick time 일 떄는 좋아요 초기화
+
+                        // 스킵 숨기기 - pick time
+                        interestedButton.style.display = "none";
+                    }
 
                     if (feedback == 1 && originId == socket.id) {
                         const elementsArr = Array.from(
@@ -1148,6 +1190,31 @@
                         }
                     }
                 });
+
+                // 대화 연장 되었다면
+                socket.on("speakExtended", () => {
+                    // 좋아요 초기화
+                    interestCount = 0;
+
+                    if (socket.id != currentSpeakerId) {
+                        interestedButton.disabled = false;
+                        interestedButton.innerText = "❤️ MORE!";
+                    }
+                });
+
+                socket.on("interestedSpeak", () => {
+                    interestCount++;
+                });
+            }
+
+            function interstedSpeak() {
+                socket.emit("interestedSpeak", {
+                    userId: socket.id,
+                    roomCode: roomCode,
+                });
+
+                interestedButton.disabled = true;
+                interestedButton.innerText = "❤️ Extend!";
             }
 
             // 자신의 턴을 스킵한다.
@@ -1197,7 +1264,7 @@
                 unmutable = false;
             }
 
-            function updateTimerUI(timeLeft, feedback) {
+            function updateTimerUI(timeLeft, feedback, interestCount) {
                 const minute = Math.floor(timeLeft / 60);
                 const second = timeLeft % 60;
 
@@ -1220,7 +1287,7 @@
 
                 timerBox.innerHTML = `⏳ <b>0${minute}:${
                     second < 10 ? "0" + second : second
-                }</b><br />${currentPartIndicator} <b>${speakerName}</b>`;
+                }</b><br />${currentPartIndicator} <b>${speakerName}</b> / ❤️ ${interestCount}`;
             }
 
             function changeVolumeColor(vol, id = socket.id) {
