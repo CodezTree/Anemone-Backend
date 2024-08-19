@@ -269,7 +269,7 @@
             }
 
             .speaker-tool {
-                display: flex;
+                display: none;
                 flex-direction: row;
                 width: fit-content;
                 justify-content: center;
@@ -290,16 +290,14 @@
             }
 
             .notice-box {
-                margin-top: 8px;
-                margin-bottom: 8px;
-                margin-bottom: 10px;
+                margin-top: 2px;
+                margin-bottom: 2px;
                 font-size: x-large;
                 font-weight: bolder;
                 color: #ff6666;
                 background-color: white;
-                padding: 5px 10px 5px 10px;
+                padding: 3px 7px 3px 7px;
                 border-radius: 0.2rem;
-                display: none;
             }
 
             .intro-form {
@@ -320,9 +318,8 @@
             .transparent-box {
                 border: 1px solid #abc8db;
                 border-radius: 25px;
-                padding: 10px;
-                margin: 20px;
-                margin-top: 22px;
+                padding: 8px;
+                margin: 10px;
                 backdrop-filter: blur(15px);
                 -webkit-backdrop-filter: blur(15px);
                 box-shadow: 2px 7px 15px 8px rgba(0, 0, 0, 0.3);
@@ -604,7 +601,7 @@
                 </div>
 
                 <div id="userCounter" class="user-counter">1 / 5</div>
-                <div class="speaker-tool">
+                <div class="speaker-tool" id="speakerTool">
                     <button
                         id="turnSkipButton"
                         class="turn-skipbutton"
@@ -707,6 +704,7 @@
             const turnSkipButton = document.getElementById("turnSkipButton");
             const interestedButton =
                 document.getElementById("interestedButton");
+            const speakerTool = document.getElementById("speakerTool");
 
             let isMicOn = false;
             let roomCode = null;
@@ -756,30 +754,35 @@
                     happy: "images/dog_happy.png",
                     sad: "images/dog_sad.png",
                     surprised: "images/dog_surprised.png",
+                    talk: "images/dog_talk.png",
                 },
                 cat: {
                     neutral: "images/cat_neutral.png",
                     happy: "images/cat_happy.png",
                     sad: "images/cat_sad.png",
                     surprised: "images/cat_surprised.png",
+                    talk: "images/cat_talk.png",
                 },
                 squirrel: {
                     neutral: "images/squirrel_neutral.png",
                     happy: "images/squirrel_happy.png",
                     sad: "images/squirrel_sad.png",
                     surprised: "images/squirrel_surprised.png",
+                    talk: "images/squirrel_talk.png",
                 },
                 fox: {
                     neutral: "images/fox_neutral.png",
                     happy: "images/fox_happy.png",
                     sad: "images/fox_sad.png",
                     surprised: "images/fox_surprised.png",
+                    talk: "images/fox_talk.png",
                 },
                 panda: {
                     neutral: "images/panda_neutral.png",
                     happy: "images/panda_happy.png",
                     sad: "images/panda_sad.png",
                     surprised: "images/panda_surprised.png",
+                    talk: "images/panda_talk.png",
                 },
             };
 
@@ -1057,6 +1060,9 @@
                     fixedMuteUser();
                     sessionStarted = true;
 
+                    // UI 툴 활성화
+                    speakerTool.style.display = "flex";
+
                     // 불필요한 UI 숨기기
                     userCounter.style.display = "none";
 
@@ -1297,13 +1303,32 @@
                 const user_box = document.getElementById(id);
                 const normal_number = normalizeToInteger(vol, 0, VOL_METER_MAX);
 
+                if (user_box == undefined) {
+                    return;
+                }
+
+                const animal_image =
+                    user_box.getElementsByClassName("animal-image")[0];
+
+                const animal = animal_image.alt;
+
+                const url = new URL(animal_image.src);
+                const filteredSrcPath = url.pathname.substring(1);
+
                 if (user_box) {
-                    if (normal_number > 1)
+                    if (normal_number > 1) {
                         user_box.style.boxShadow =
                             "0 0px 16px rgba(51, 204, 51, 1)";
-                    else
+                        if (filteredSrcPath == animalImages[animal].neutral) {
+                            animal_image.src = animalImages[animal].talk;
+                        }
+                    } else {
                         user_box.style.boxShadow =
                             "0 4px 8px rgba(0, 0, 0, 0.1)";
+                        if (filteredSrcPath == animalImages[animal].talk) {
+                            animal_image.src = animalImages[animal].neutral;
+                        }
+                    }
                 }
             }
 
@@ -1324,7 +1349,7 @@
                 userBox.innerHTML = `
                     <img src="${
                         animalImages[animal].neutral
-                    }" alt="Animal Character" class="animal-image"/>
+                    }" alt="${animal}" class="animal-image"/>
                     <p class="name-box">${name}</p>
                     <div class="status-box">
                         <p class="mic-status">
