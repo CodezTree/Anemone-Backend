@@ -38,7 +38,7 @@ app.use("/api", apiRouter);
 const rooms = {};
 
 const MAX_USER = 5;
-const BASE_TIME = 20; //60 * 3;
+const BASE_TIME = 60 * 3; //60 * 3;
 const ADDITION_TIME = 30;
 const FEEDBACK_TIME = 90; //60 * 1.5;
 const FEEDBACK_PICK_TIME = 15; //15;
