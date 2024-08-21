@@ -69,6 +69,30 @@ io.on("connection", (socket) => {
         }
     });
 
+    socket.on("roomStatus", () => {
+        const r = [];
+        let roomCodeList = new Array(8).fill("room_");
+
+        roomCodeList = roomCodeList.map((e, i) => e + (i + 1).toString());
+
+        roomCodeList.forEach((roomCode) => {
+            const peopleN = getPeopleRoom(roomCode);
+
+            r.push(peopleN);
+        });
+
+        socket.emit("roomStatus", {
+            r1: r[0],
+            r2: r[1],
+            r3: r[2],
+            r4: r[3],
+            r5: r[4],
+            r6: r[5],
+            r7: r[6],
+            r8: r[7],
+        });
+    });
+
     socket.on("joinRoom", ({ roomCode, userName, animal }) => {
         socket.join(roomCode);
 
@@ -138,6 +162,9 @@ io.on("connection", (socket) => {
     });
 
     socket.on("changeExpression", (data) => {
+        console.log(
+            "Change Expression : " + data.roomCode + " / " + data.expression
+        );
         io.to(data.roomCode).emit("changeExpression", data);
     });
 
@@ -243,6 +270,18 @@ setInterval(() => {
         console.log("Refresh db connection : :", results);
     });
 }, 3600 * 1000); // 1 hour
+
+function getPeopleRoom(roomCode) {
+    if (!rooms[roomCode]) {
+        return 0;
+    } else {
+        if (rooms[roomCode].sessionStarted) {
+            return 8;
+        }
+
+        return rooms[roomCode].users.length;
+    }
+}
 
 function startSession(roomCode) {
     io.to(roomCode).emit("startSession");

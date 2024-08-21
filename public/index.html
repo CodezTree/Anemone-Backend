@@ -7,6 +7,7 @@
             name="viewport"
             content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <title>Animon</title>
+        <link rel="stylesheet" href="./styles/font.css" />
         <style>
             :root {
                 --arrow-bg: rgba(255, 255, 255, 0.3);
@@ -33,8 +34,8 @@
             /* 스타일 부분은 기존과 동일합니다. */
             body {
                 font-family: Arial, sans-serif;
-                background-color: #f0f8ff;
-                background-image: url("background_forest.png");
+                background-color: #ffffff;
+                background-image: url("background_new.jpeg");
                 background-size: cover;
                 background-position: center;
                 background-repeat: no-repeat;
@@ -52,7 +53,7 @@
 
             h1 {
                 margin-bottom: 10px;
-                color: #2c3e50;
+                color: #000000;
                 text-align: center;
             }
 
@@ -88,6 +89,7 @@
                 display: none;
                 flex-direction: column;
                 align-items: center;
+                justify-content: center;
             }
 
             .user-container {
@@ -107,14 +109,14 @@
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                border: 1px solid #bdc3c7;
+                border: 0px;
                 border-radius: 0.8rem;
                 margin: 0.5rem;
-                padding: 4px;
-                width: 5.5rem;
+                padding: 6px;
+                width: 5.7rem;
                 text-align: center;
-                background-color: white;
-                background-image: url("namecard_back.png");
+                background-color: #404858;
+                /*background-image: url("namecard_back.png");*/
                 background-size: cover;
                 background-position-x: 25%;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -166,33 +168,33 @@
             }
 
             .ready-status {
-                margin-top: 4px;
-                margin-bottom: 4px;
-                margin-right: 6px;
+                margin-top: 2px;
+                margin-bottom: 2px;
+                margin-right: 4px;
                 display: flex;
                 justify-content: center;
                 align-items: center;
             }
 
             .ready-status img {
-                width: 24px;
-                height: 24px;
+                width: 16px;
+                height: 16px;
                 vertical-align: middle;
             }
 
             .mic-status {
-                margin-top: 4px;
-                margin-bottom: 4px;
-                margin-left: 6px;
+                margin-top: 2px;
+                margin-bottom: 2px;
+                margin-left: 4px;
                 display: flex;
                 justify-content: center;
                 align-items: center;
             }
 
             .mic-status img {
-                width: 20px;
-                height: 20px;
-                padding: 4px;
+                width: 16px;
+                height: 16px;
+                padding: 0px;
                 vertical-align: middle;
             }
 
@@ -201,6 +203,8 @@
                 border-radius: 10px;
                 display: flex;
                 flex-direction: row;
+                margin-top: 4px;
+                gap: 4px;
             }
 
             .me-handson {
@@ -208,11 +212,11 @@
                 margin-top: 4px;
                 margin-bottom: 4px;
                 margin-right: 6px;
-                font-size: 20px;
+                font-size: 16px;
                 justify-content: center;
                 align-items: center;
-                width: 28px;
-                height: 28px;
+                width: 16px;
+                height: 16px;
             }
 
             @keyframes wave {
@@ -241,7 +245,7 @@
                 display: inline-block;
                 animation: wave 1.5s infinite;
                 transform-origin: 50% 90%; /* 손목이 흔들리도록 회전 중심 조정 */
-                font-size: 2rem; /* 손 크기 */
+                font-size: 1.3rem; /* 손 크기 */
             }
 
             .turn-skipbutton {
@@ -255,7 +259,7 @@
             .name-box {
                 margin-top: 4px;
                 margin-bottom: 0px;
-                background-color: white;
+                background-color: #00000000;
                 border-radius: 0.2rem;
                 padding: 2px;
                 padding-left: 5px;
@@ -266,6 +270,7 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: clip;
+                color: white;
             }
 
             .speaker-tool {
@@ -280,6 +285,7 @@
             .timer-box {
                 background-color: white;
                 border-radius: 0.2rem;
+                border: 1px solid black;
                 padding: 7px;
                 padding-left: 40px;
                 padding-right: 40px;
@@ -290,7 +296,7 @@
             }
 
             .notice-box {
-                margin-top: 2px;
+                margin-top: 4px;
                 margin-bottom: 2px;
                 font-size: x-large;
                 font-weight: bolder;
@@ -300,8 +306,69 @@
                 border-radius: 0.2rem;
             }
 
-            .intro-form {
+            .app-box {
+                padding: 5px;
+                background-color: white;
+                width: 100vw;
+                height: 100vh;
+
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }
+
+            .intro-container {
                 display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+            }
+
+            .room-selection-container {
+                display: none;
+                flex-direction: column;
+                gap: 4px;
+                padding: 8px;
+            }
+
+            .room-listups {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                border: 2px solid #000000;
+                border-radius: 4px;
+            }
+
+            .room-listups .room-topic {
+                font-size: larger;
+            }
+
+            .room-subroom-list {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 10px;
+                gap: 4px;
+                color: #000000;
+            }
+
+            .room-item {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                width: min-content;
+                border: 1px solid #000000;
+                border-radius: 4px;
+                padding: 8px;
+            }
+
+            .intro-form {
+                display: none;
                 flex-direction: column;
                 flex-wrap: nowrap;
                 align-items: center;
@@ -352,7 +419,7 @@
                         var(--arrow-bg) 3em,
                         var(--select-bg) 3em
                     );
-                color: white;
+                color: black;
                 border-radius: 0.25em;
                 box-shadow: 0 0 1em 0 rgba(0, 0, 0, 0.2);
                 cursor: pointer;
@@ -382,10 +449,10 @@
                 font-family: inherit;
                 width: 100%;
                 border: 0;
-                border-bottom: 2px solid white;
+                border-bottom: 2px solid black;
                 outline: 0;
                 font-size: 1.3rem;
-                color: white;
+                color: black;
                 padding: 7px 0;
                 background: transparent;
                 transition: border-color 0.2s;
@@ -407,7 +474,7 @@
                 display: block;
                 transition: 0.2s;
                 font-size: 1rem;
-                color: white;
+                color: black;
             }
 
             .form__field:focus {
@@ -549,7 +616,22 @@
     </head>
     <body>
         <div id="transparentBox" class="transparent-box">
-            <h1 id="titleBox">Animon</h1>
+            <!--<div id="appBox" class="app-box">-->
+            <div id="introContainer" class="intro-container">
+                <img
+                    src="./animon_logo.jpeg"
+                    alt="App logo"
+                    style="width: 200px" />
+                <p
+                    class="poppins-bold"
+                    style="
+                        font-size: 40px;
+                        margin-top: 2px;
+                        margin-bottom: 2px;
+                    ">
+                    ANIMON
+                </p>
+            </div>
             <form id="nameForm" class="intro-form">
                 <img
                     src="images/intro.jpeg"
@@ -594,8 +676,96 @@
                 </div>
                 <button type="submit">Join Room</button>
             </form>
+            <div id="roomSelectionContainer" class="room-selection-container">
+                <button id="roomRefresh" onclick="requestRoomStatus()">
+                    Refresh
+                </button>
+                <div id="roomListUps" class="room-listups">
+                    <p class="room-topic">Coming Out Before</p>
+                    <div class="room-subroom-list">
+                        <div id="room1" class="room-item">
+                            <p id="roomP_1" class="room-people">0/5</p>
+                            <button
+                                id="joinButton1"
+                                class="join-button"
+                                onclick="joinRoom1()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room2" class="room-item">
+                            <p id="roomP_2" class="room-people">0/5</p>
+                            <button
+                                id="joinButton2"
+                                class="join-button"
+                                onclick="joinRoom2()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room3" class="room-item">
+                            <p id="roomP_3" class="room-people">0/5</p>
+                            <button
+                                id="joinButton3"
+                                class="join-button"
+                                onclick="joinRoom3()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room4" class="room-item">
+                            <p id="roomP_4" class="room-people">0/5</p>
+                            <button
+                                id="joinButton4"
+                                class="join-button"
+                                onclick="joinRoom4()">
+                                JOIN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="roomListUps" class="room-listups">
+                    <p class="room-topic">Coming Out After</p>
+                    <div class="room-subroom-list">
+                        <div id="room5" class="room-item">
+                            <p id="roomP_5" class="room-people">0/5</p>
+                            <button
+                                id="joinButton5"
+                                class="join-button"
+                                onclick="joinRoom5()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room6" class="room-item">
+                            <p id="roomP_6" class="room-people">0/5</p>
+                            <button
+                                id="joinButton6"
+                                class="join-button"
+                                onclick="joinRoom6()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room7" class="room-item">
+                            <p id="roomP_7" class="room-people">0/5</p>
+                            <button
+                                id="joinButton7"
+                                class="join-button"
+                                onclick="joinRoom7()">
+                                JOIN
+                            </button>
+                        </div>
+                        <div id="room8" class="room-item">
+                            <p id="roomP_8" class="room-people">0/5</p>
+                            <button
+                                id="joinButton8"
+                                class="join-button"
+                                onclick="joinRoom8()">
+                                JOIN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="animalContainer">
-                <div id="noticeBox" class="notice-box">NOTICE :</div>
+                <div id="noticeBox" class="notice-box">TOPIC</div>
                 <div id="timerBox" class="timer-box">
                     ⏳ <b>03:00</b><br />📣 <b>NOT STARTED</b>
                 </div>
@@ -641,6 +811,7 @@
                 </div>
             </div>
         </div>
+        <!--</div>-->
 
         <!-- Floating Button -->
         <div
@@ -688,15 +859,21 @@
         <script>
             const socket = io();
 
+            const appBox = document.getElementById("appBox");
+
             const nameForm = document.getElementById("nameForm");
             const roomForm = document.getElementById("roomForm");
+
+            // Container
+            const introContainer = document.getElementById("introContainer");
             const animalContainer = document.getElementById("animalContainer");
             const userContainer = document.getElementById("userContainer");
+
             const userCounter = document.getElementById("userCounter");
             const noticeBox = document.getElementById("noticeBox");
             const chatFloatButton = document.getElementById("chatFloatButton");
             const chatPopup = document.getElementById("chatPopup");
-            const titleBox = document.getElementById("titleBox");
+            // const titleBox = document.getElementById("titleBox");
             const timerBox = document.getElementById("timerBox");
             const handsOnButton = document.getElementById("handsonButton");
             const readyButton = document.getElementById("readyButton");
@@ -705,6 +882,29 @@
             const interestedButton =
                 document.getElementById("interestedButton");
             const speakerTool = document.getElementById("speakerTool");
+            const roomSelectionContainer = document.getElementById(
+                "roomSelectionContainer"
+            );
+
+            // Room people yeah
+            const roomP_1 = document.getElementById("roomP_1");
+            const roomP_2 = document.getElementById("roomP_2");
+            const roomP_3 = document.getElementById("roomP_3");
+            const roomP_4 = document.getElementById("roomP_4");
+            const roomP_5 = document.getElementById("roomP_5");
+            const roomP_6 = document.getElementById("roomP_6");
+            const roomP_7 = document.getElementById("roomP_7");
+            const roomP_8 = document.getElementById("roomP_8");
+
+            // Join button yeah
+            const joinButton1 = document.getElementById("joinButton1");
+            const joinButton2 = document.getElementById("joinButton2");
+            const joinButton3 = document.getElementById("joinButton3");
+            const joinButton4 = document.getElementById("joinButton4");
+            const joinButton5 = document.getElementById("joinButton5");
+            const joinButton6 = document.getElementById("joinButton6");
+            const joinButton7 = document.getElementById("joinButton7");
+            const joinButton8 = document.getElementById("joinButton8");
 
             let isMicOn = false;
             let roomCode = null;
@@ -721,6 +921,7 @@
             let currentSpeakerId = undefined;
             let handsOn = false;
             let interestCount = 0;
+            let refreshInterval;
 
             const minimumUser = 3;
 
@@ -732,6 +933,11 @@
                 animalSelect.selectedIndex = randomIndex; // 랜덤하게 선택된 옵션 인덱스를 설정
             };
 
+            // 방 새로고침
+            refreshInterval = setInterval(() => {
+                requestRoomStatus();
+            }, 5000);
+
             // 방 시작 준비 확인
             let isReady = false;
 
@@ -739,6 +945,11 @@
             const config = {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun.l.google.com:5349" },
+                    { urls: "stun:stun1.l.google.com:3478" },
+                    { urls: "stun:stun1.l.google.com:5349" },
+                    { urls: "stun:stun2.l.google.com:19302" },
+                    { urls: "stun:stun2.l.google.com:5349" },
                     {
                         urls: "turn:141.164.63.143",
                         username: "animon",
@@ -786,19 +997,24 @@
                 },
             };
 
+            // ------ STARTUP ------
+            logoLoad();
+            // ---- STARTUP ENDS ----
+
             nameForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 userName = document.getElementById("userName").value;
                 selectedAnimal = document.getElementById("animalChoice").value; // 선택된 동물 저장
                 nameForm.style.display = "none";
-                roomForm.style.display = "flex";
+                roomSelectionContainer.style.display = "flex";
+                //roomForm.style.display = "flex";
             });
 
-            roomForm.addEventListener("submit", (e) => {
-                e.preventDefault();
-                roomCode = document.getElementById("roomCode").value;
-                tryJoinRoom(roomCode);
-            });
+            // roomForm.addEventListener("submit", (e) => {
+            //     e.preventDefault();
+            //     roomCode = document.getElementById("roomCode").value;
+            //     tryJoinRoom(roomCode);
+            // });
 
             function tryJoinRoom(roomCode) {
                 socket.emit("tryJoin", roomCode);
@@ -806,14 +1022,32 @@
 
             socket.on("roomFull", () => {
                 alert("Room is full!");
+                enableAllJoinButton();
+                requestRoomStatus();
             });
 
             socket.on("roomAlreadyStarted", () => {
                 alert("Room session already started!");
+                enableAllJoinButton();
+                requestRoomStatus();
             });
 
-            socket.on("joinOK", (roomCode) => {
-                joinRoom(roomCode);
+            socket.on("joinOK", (_roomCode) => {
+                // 룸코드 설정
+                roomCode = _roomCode;
+                joinRoom(_roomCode);
+                clearInterval(refreshInterval);
+            });
+
+            socket.on("roomStatus", ({ r1, r2, r3, r4, r5, r6, r7, r8 }) => {
+                roomP_1.innerText = r1 == 8 ? "STARTED" : r1 + "/5";
+                roomP_2.innerText = r2 == 8 ? "STARTED" : r2 + "/5";
+                roomP_3.innerText = r3 == 8 ? "STARTED" : r3 + "/5";
+                roomP_4.innerText = r4 == 8 ? "STARTED" : r4 + "/5";
+                roomP_5.innerText = r5 == 8 ? "STARTED" : r5 + "/5";
+                roomP_6.innerText = r6 == 8 ? "STARTED" : r6 + "/5";
+                roomP_7.innerText = r7 == 8 ? "STARTED" : r7 + "/5";
+                roomP_8.innerText = r8 == 8 ? "STARTED" : r8 + "/5";
             });
 
             async function joinRoom(roomCode) {
@@ -865,10 +1099,14 @@
                 });
 
                 // 필요한 element display / none
-                roomForm.style.display = "none";
+                //roomForm.style.display = "none";
+                roomSelectionContainer.style.display = "none";
                 chatFloatButton.style.display = "block";
-                titleBox.style.display = "none";
+                //titleBox.style.display = "none";
                 animalContainer.style.display = "flex";
+
+                // background image 변경
+                //appBox.style.backgroundImage = "./background_new.jpeg";
 
                 socket.off("existingUsers");
                 socket.off("userJoined");
@@ -920,7 +1158,7 @@
                         "\n" +
                             data.userId +
                             " joined room " +
-                            roomCode +
+                            data.roomCode +
                             "!! \n\n"
                     );
                     addUser(
@@ -1223,6 +1461,13 @@
                 interestedButton.innerText = "❤️ Extend!";
             }
 
+            function logoLoad() {
+                setTimeout(() => {
+                    introContainer.style.display = "none";
+                    nameForm.style.display = "flex";
+                }, 1500);
+            }
+
             // 자신의 턴을 스킵한다.
             function turnSkip() {
                 socket.emit("turnSkip", {
@@ -1362,7 +1607,7 @@
                         </p>
                         <p class="me-handson">😶</p>
                     </div>
-                    
+
                     <button class="pick-button" onclick="selectFeedback(this.parentElement)">✓</button>
                     <audio id="audio-${userId}" autoplay></audio>
                     `;
@@ -1379,11 +1624,13 @@
 
             function changeExpression(expression) {
                 socket.emit("changeExpression", {
-                    roomCode,
-                    expression,
+                    roomCode: roomCode,
+                    expression: expression,
                     userId: socket.id,
                     animal: selectedAnimal, // 선택한 동물 정보를 함께 전송
                 });
+
+                console.log("Changing Expression!");
 
                 if (timeoutId) {
                     clearTimeout(timeoutId);
@@ -1396,7 +1643,7 @@
                         userId: socket.id,
                         animal: selectedAnimal, // 선택한 동물 정보를 함께 전송
                     });
-                }, 2000);
+                }, 4000);
             }
 
             function handsOnSign() {
@@ -1410,6 +1657,7 @@
             }
 
             function updateExpression(data) {
+                console.log("updating expression!!");
                 const userBox = document.getElementById(data.userId);
                 if (userBox) {
                     const animalImage = userBox.querySelector(".animal-image");
@@ -1706,6 +1954,78 @@
                 audio.currentTime = 0;
                 audio.play();
             }
+            // ----- Sound Effect Ends -----
+
+            // -------- Room Enter -------
+            function joinRoom1() {
+                disableAllJoinButton();
+                tryJoinRoom("room_1");
+            }
+
+            function joinRoom2() {
+                disableAllJoinButton();
+                tryJoinRoom("room_2");
+            }
+
+            function joinRoom3() {
+                disableAllJoinButton();
+                tryJoinRoom("room_3");
+            }
+
+            function joinRoom4() {
+                disableAllJoinButton();
+                tryJoinRoom("room_4");
+            }
+
+            function joinRoom5() {
+                disableAllJoinButton();
+                tryJoinRoom("room_5");
+            }
+
+            function joinRoom6() {
+                disableAllJoinButton();
+                tryJoinRoom("room_6");
+            }
+
+            function joinRoom7() {
+                disableAllJoinButton();
+                tryJoinRoom("room_7");
+            }
+
+            function joinRoom8() {
+                disableAllJoinButton();
+                tryJoinRoom("room_8");
+            }
+
+            function disableAllJoinButton() {
+                joinButton1.disabled = true;
+                joinButton2.disabled = true;
+                joinButton3.disabled = true;
+                joinButton4.disabled = true;
+                joinButton5.disabled = true;
+                joinButton6.disabled = true;
+                joinButton7.disabled = true;
+                joinButton8.disabled = true;
+            }
+
+            function enableAllJoinButton() {
+                joinButton1.disabled = false;
+                joinButton2.disabled = false;
+                joinButton3.disabled = false;
+                joinButton4.disabled = false;
+                joinButton5.disabled = false;
+                joinButton6.disabled = false;
+                joinButton7.disabled = false;
+                joinButton8.disabled = false;
+            }
+            // ----- Room Enter Ends -----
+
+            function requestRoomStatus() {
+                console.log("Requesting room status...");
+                socket.emit("roomStatus");
+            }
+
+            requestRoomStatus();
         </script>
     </body>
 </html>
